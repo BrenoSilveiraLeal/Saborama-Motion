@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="f" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F2A81D"/>
+      <stop offset="1" stop-color="#C8321E"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#f)"/>
+  <!-- o S de Saborama -->
+  <path d="M45 21.500C43 15.500 38 12.500 32 12.500C24 12.500 18.500 16.800 18.500 23C18.500 29.500 24 32 32 33.500C40 35 45.500 37.500 45.500 44C45.500 50 40 53.500 32 53.500C25 53.500 20 50.500 18 44.500" fill="none" stroke="#FFF6E5" stroke-width="9" stroke-linecap="round"/>
+</svg>

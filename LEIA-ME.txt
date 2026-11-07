@@ -1,0 +1,6 @@
+﻿SABORAMA MOTION
+
+Para abrir o site, de dois cliques em index.html.
+
+Se alguma coisa nao carregar, clique com o botao direito em servidor-local.ps1,
+escolha "Executar com o PowerShell" e abra http://localhost:5173 no navegador.

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saborama Motion · Cardápio em movimento</title>
+<meta name="description" content="Saborama Motion: um cardápio gigante onde você vê cada prato sendo feito, passo a passo.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<a class="skip" href="#categorias">Pular para o cardápio</a>
+
+<div id="loader" aria-hidden="true">
+  <div class="ld-plate"><span id="ldn">0</span></div>
+  <div class="ld-brand">Saborama <em>Motion</em></div>
+</div>
+
+<header class="top" id="top">
+  <a class="logo" href="#cena" aria-label="Saborama Motion, início">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="currentColor"/><circle cx="16" cy="16" r="8" fill="var(--page)"/></svg>
+    <span>Saborama <em>Motion</em></span>
+  </a>
+  <nav class="nav" aria-label="Principal"><a href="#cena">Na cozinha</a><a href="#categorias">Cardápio</a></nav>
+  <button class="cat-back" id="catBack" type="button"><i aria-hidden="true">←</i><span>Voltar<span class="cb-x"> ao menu</span></span></button>
+  <button class="order-btn" id="orderBtn" type="button">Pedido <i id="orderCount">0</i></button>
+</header>
+
+<main>
+<section id="cena" aria-label="Pratos sendo feitos, passo a passo">
+  <div class="stage" id="stage">
+    <div class="copy">
+      <p class="kick" id="kick"></p>
+      <h1 class="title"><span class="ln"><span id="t1"></span></span><span class="ln"><span id="t2"></span></span></h1>
+      <p class="text" id="text"></p>
+      <div class="flavors" id="flavors" role="radiogroup" aria-label="Sabor"></div>
+      <button class="soda" id="heroBuy" type="button">
+        <span class="liq"><svg viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 15 Q50 0 100 15 T200 15 T300 15 T400 15 V30 H0Z"/></svg></span>
+        <span class="lb">Adicionar <em id="heroPrice"></em></span><span class="ar" aria-hidden="true">+</span>
+      </button>
+      <div class="steps" id="steps" role="group" aria-label="Passos do preparo"></div>
+    </div>
+
+    <div class="window" id="win">
+      <div class="shots" id="shots" aria-hidden="true"></div>
+      <canvas id="fx" aria-hidden="true"></canvas>
+      <div class="win-shade"></div>
+      <div class="timer" aria-hidden="true">
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="t-bg"/><circle cx="50" cy="50" r="46" class="t-fg" id="ring" pathLength="100"/></svg>
+        <div><b id="statV">0</b><small id="statU"></small></div>
+      </div>
+      <div class="cue" id="cue">Role para cozinhar <i>↓</i></div>
+      <div class="pick">
+        <div class="bubbles" id="bubbles" role="radiogroup" aria-label="Escolha o prato"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="band" aria-hidden="true"><div class="band-in" id="band"></div></div>
+
+<section id="categorias" class="sec sec-cats" aria-label="Categorias de comida">
+  <div class="wrap">
+    <div class="menu-head">
+      <div>
+        <p class="pill"><i></i><span id="catsLine"></span></p>
+        <h2 class="h2">Do que você tem fome? <em>Escolha uma categoria.</em></h2>
+      </div>
+      <label class="search search-geral"><span class="vh">Buscar em todo o cardápio</span><input id="qGeral" type="search" placeholder="Buscar em todo o cardápio..."></label>
+    </div>
+    <div class="cats" id="cats"></div>
+  </div>
+</section>
+
+<section id="cardapio" class="sec" aria-label="Produtos da categoria" hidden>
+  <div class="wrap">
+    <div class="menu-head">
+      <div>
+        <p class="pill"><i></i><span id="totalLine"></span></p>
+        <h2 class="h2"><span id="menuTitle"></span> <em>Clique e entre no prato.</em></h2>
+      </div>
+      <p class="hint">Clique num bloco · as setas trocam · Esc fecha</p>
+    </div>
+    <div class="tools">
+      <div class="chips" id="chips" role="group" aria-label="Tipo de comida"></div>
+      <div class="filtros" id="filtros" role="group" aria-label="Filtrar pratos"></div>
+      <label class="search"><span class="vh">Buscar prato</span><input id="q" type="search" placeholder="Buscar sabor..."></label>
+    </div>
+    <div class="bento" id="bento"></div>
+    <p class="empty" id="empty" hidden>Nenhum prato com esse nome.</p>
+  </div>
+</section>
+</main>
+
+<footer class="foot">© 2026 Saborama Motion · Preços, tempos, contato e fotos geradas por IA são de demonstração.</footer>
+
+<div class="wave" id="wave" aria-hidden="true"><svg preserveAspectRatio="none" viewBox="0 0 100 100"><path id="waveLine" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg></div>
+
+<div class="island" id="island" role="region" aria-label="Comprar">
+  <div class="is-in">
+    <span class="is-th" id="isTh"></span>
+    <div class="is-name"><h3 id="isName"></h3><p id="isSub"></p></div>
+    <div class="is-opts" id="isOpts" role="group" aria-label="Tamanho"></div>
+    <div class="is-price"><span class="is-val"><small>R$</small><span id="isNum"></span></span><span class="is-inst" id="isInst"></span></div>
+    <button class="is-cta" id="isCta" type="button"><span>Adicionar</span><i aria-hidden="true">+</i></button>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer" aria-label="Seu pedido" aria-hidden="true" inert>
+  <div class="dr-head"><h3 id="drTitle">Seu pedido</h3><button id="drClose" type="button" aria-label="Fechar o pedido">✕</button></div>
+  <ol class="co-steps" id="coSteps" aria-label="Etapas"><li>Sacola</li><li>Entrega</li><li>Pagamento</li></ol>
+  <div class="dr-list" id="drList"></div>
+  <div class="dr-foot" id="drFoot"></div>
+</aside>
+<div class="scrim" id="scrim"></div>
+<p class="vh" id="live" aria-live="polite"></p>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/tags.js"></script>
+<script src="js/pieces.js"></script><script src="js/recipes-built.js"></script><script src="js/ingredients.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
