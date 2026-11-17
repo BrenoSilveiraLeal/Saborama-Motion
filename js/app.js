@@ -1,6 +1,13 @@
 /* Saborama Motion · cozinha com rolagem e abertura em círculo, troca de prato com onda de líquido, cardápio em grade que expande e pedido. */
 (function () {
-  const { SHOWS, TYPES } = window.SM;
+  const { SHOWS, TYPES, VER } = window.SM;
+  /* escala (escala.js): em telas grandes a página tem zoom. A rolagem, as medidas da tela e as caixas dos elementos vêm na escala da tela;
+     aqui tudo é convertido para a escala do desenho (1366px), a mesma do CSS */
+  const ZZ = () => window.SM_Z || 1, IW = () => window.innerWidth / ZZ(), IH = () => window.innerHeight / ZZ(), SY = () => window.scrollY / ZZ();
+  const ret = (el) => { const r = el.getBoundingClientRect(), z = ZZ(); return z === 1 ? r : { left: r.left / z, top: r.top / z, right: r.right / z, bottom: r.bottom / z, width: r.width / z, height: r.height / z, x: r.x / z, y: r.y / z }; };
+  const rolarPara = (a, b) => (typeof a === 'object' ? window.scrollTo({ ...a, top: a.top == null ? undefined : a.top * ZZ(), left: a.left == null ? undefined : a.left * ZZ() }) : window.scrollTo(a * ZZ(), b * ZZ()));
+  const rolarDe = (a) => window.scrollBy({ ...a, top: (a.top || 0) * ZZ() });
+
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), lerp = (a, b, t) => a + (b - a) * t;
@@ -22,10 +29,10 @@
   let cur = 0, target = 0, p = 0, stepNow = -1, busy = false, shotEls = [], fxKind = 'smoke';
   const cena = $('#cena'), stage = $('#stage'), shotsEl = $('#shots'), stepsEl = $('#steps');
   const setVars = (c) => { const r = document.documentElement.style; r.setProperty('--page', c.page); r.setProperty('--ink', c.ink); r.setProperty('--soft', c.soft); r.setProperty('--accent', c.accent); };
-  const sectionRange = () => ({ top: cena.offsetTop, h: cena.offsetHeight - innerHeight });
-  const jumpTo = (f) => { const { top, h } = sectionRange(); scrollTo({ top: top + h * f, behavior: reduce ? 'auto' : 'smooth' }); };
+  const sectionRange = () => ({ top: cena.offsetTop, h: cena.offsetHeight - IH() });
+  const jumpTo = (f) => { const { top, h } = sectionRange(); rolarPara({ top: top + h * f, behavior: reduce ? 'auto' : 'smooth' }); };
   const ingUrl = (k) => `assets/ingredients/${k}.png`;
-  const stepImg = (s) => (s.frame ? `assets/frames/${s.frame}.jpg` : s.ing ? ingUrl(s.ing) : sceneUrl(s.img));
+  const stepImg = (s) => (s.frame ? `assets/frames/${s.frame}.jpg?v=${VER}` : s.ing ? ingUrl(s.ing) : sceneUrl(s.img));
   const showThumb = (s) => s.heroUrl || sceneUrl(s.recipe ? s.hero : s.steps[s.steps.length - 1].img);
   let layers = [], frameEls = [], fizz = null;
   /* bebidas com gás: as bolhas sobem dentro do copo */
@@ -39,8 +46,8 @@
       const wrap = document.createElement('div'); wrap.className = 'build'; wrap.innerHTML = `<img class="b-bg" src="${sceneUrl(window.SM.BOARD.img)}" alt=""><div class="b-shadow"></div><div class="b-stack"></div><img class="b-final" src="${showThumb(show)}" alt=""><div class="b-fade"></div>`;
       shotsEl.appendChild(wrap); const st = $('.b-stack', wrap);
       /* fotos reais de cada etapa, uma por ingrediente (a última etapa é a foto final) */
-      frameEls = (show.frames || []).map((n) => { const f = new Image(); f.className = 'b-frame'; f.alt = ''; f.onerror = () => { f.style.display = 'none'; }; f.src = `assets/frames/${n}.jpg`; wrap.insertBefore(f, st); return f; });
-      layers = show.recipe.map((k, i) => { const fr = show.frames && show.frames[i], im = new Image(); im.className = 'b-ing'; im.alt = ''; const box = fr && window.SM.PIECES[fr], pour = show.pours && show.pours[i]; if (box && !pour) im.src = `assets/frames/${fr}-peca.png`; else if (!fr) im.src = ingUrl(k); im.style.zIndex = i + 1; st.appendChild(im);
+      frameEls = (show.frames || []).map((n) => { const f = new Image(); f.className = 'b-frame'; f.alt = ''; f.onerror = () => { f.style.display = 'none'; }; f.src = `assets/frames/${n}.jpg?v=${VER}`; wrap.insertBefore(f, st); return f; });
+      layers = show.recipe.map((k, i) => { const fr = show.frames && show.frames[i], im = new Image(); im.className = 'b-ing'; im.alt = ''; const box = fr && window.SM.PIECES[fr], pour = show.pours && show.pours[i]; if (box && !pour) im.src = `assets/frames/${fr}-peca.png?v=${VER}`; else if (!fr) im.src = ingUrl(k); im.style.zIndex = i + 1; st.appendChild(im);
         /* etapa de molho: um frasco de verdade entra em cena e aplica o molho */
         let bottle = null, stream = null; if (pour) { if (/^ralador/.test(pour || '')) { bottle = document.createElement('div'); bottle.className = 'b-bottle b-grater'; bottle.innerHTML = '<img src="assets/tools/ralador-base.png" alt=""><img class="g-queijo" src="assets/tools/' + (pour === 'raladorchocolate' ? 'ralador-chocolate' : 'ralador-queijo') + '.png" alt="">'; bottle.naturalWidth = 452; bottle.naturalHeight = 900; Object.defineProperty(bottle, 'complete', { get: () => [...bottle.children].every((c) => c.complete) }); } else { bottle = new Image(); bottle.className = 'b-bottle'; bottle.alt = ''; bottle.src = `assets/tools/${pour}.png`; } stream = document.createElement('div'); stream.className = 'b-stream'; stream.style.background = SAUCE[pour] || SAUCE.ketchup; wrap.append(stream, bottle); }
         /* etapa de líquido: um jato cai de cima e enche o recipiente */
@@ -54,7 +61,7 @@
         im.onerror = () => { layer.box = null; im.style.display = 'none'; };
         return layer; });
       /* a área do molho vem da diferença entre duas fotos e pode pegar fumaça e luz: ela nunca passa dos limites da comida que já caiu */
-      layers.forEach((l, i) => { if (!l.pour || !l.box || l.pour === 'colherpure') return; let x0 = 1, x1 = 0, ant = null; for (let q = 0; q < i; q++) { const b = layers[q].box; if (b && !layers[q].pour) { x0 = Math.min(x0, b.x); x1 = Math.max(x1, b.x + b.w); ant = b; } } if (!ant) return; /* panela e abóbora: o molho entra pela abertura, em cima, nunca por fora */ if ((show.stepKeys || [])[i] === 'vatapá') { l.box = { x: ant.x + ant.w * 0.22, y: ant.y + ant.h * 0.42, w: ant.w * 0.56, h: ant.h * 0.2 }; return; } if (['creme de camarão', 'creme de mandioca', 'leite de coco'].includes((show.stepKeys || [])[i])) { l.box = { x: ant.x + ant.w * 0.22, y: ant.y + ant.h * 0.02, w: ant.w * 0.56, h: ant.h * 0.2 }; return; } /* ralador, saleiro e colher passam por toda a comida que já está no prato, sem contar o prato ou a tigela: nada cai fora dela */ if (/^(ralador|saleiro|colher|mao)/.test(l.pour)) { let xa = 1, xb = 0, ya = 1, yb = 0; for (let q = 1; q < i; q++) { const b = layers[q].box; if (b && !layers[q].pour) { xa = Math.min(xa, b.x); xb = Math.max(xb, b.x + b.w); ya = Math.min(ya, b.y); yb = Math.max(yb, b.y + b.h); } } l.box = xb > xa ? { x: xa, y: ya, w: xb - xa, h: yb - ya } : ant; return; } const a = Math.max(l.box.x, x0), c = Math.min(l.box.x + l.box.w, x1); /* na altura também: o molho nunca desce abaixo da última comida, para não cair no prato nem na frente da tigela */ const y0 = Math.min(l.box.y, ant.y + ant.h * 0.5), y1 = Math.min(l.box.y + l.box.h, ant.y + ant.h), h0 = y1 - y0; l.box = c - a >= 0.06 ? { x: a, w: c - a, y: y0, h: h0 >= 0.03 ? h0 : ant.h } : ant; });
+      layers.forEach((l, i) => { if (!l.pour || !l.box || l.pour === 'colherpure') return; let x0 = 1, x1 = 0, ant = null; for (let q = 0; q < i; q++) { const b = layers[q].box; if (b && !layers[q].pour) { x0 = Math.min(x0, b.x); x1 = Math.max(x1, b.x + b.w); ant = b; } } if (!ant) return; /* panela e abóbora: o molho entra pela abertura, em cima, nunca por fora */ if ((show.stepKeys || [])[i] === 'vatapá') { l.box = { x: ant.x + ant.w * 0.22, y: ant.y + ant.h * 0.42, w: ant.w * 0.56, h: ant.h * 0.2 }; return; } if (['creme de camarão', 'creme de mandioca', 'leite de coco'].includes((show.stepKeys || [])[i])) { l.box = { x: ant.x + ant.w * 0.22, y: ant.y + ant.h * 0.02, w: ant.w * 0.56, h: ant.h * 0.2 }; return; } /* ralador, saleiro e colher passam por toda a comida que já está no prato, sem contar o prato ou a tigela: nada cai fora dela */ if (l.pour === 'raladorchocolate') return; /* raspas de chocolate: ficam com a área medida na foto (em cima do chantilly), nunca o corpo do copo */ if (/^(ralador|saleiro|colher|mao)/.test(l.pour)) { let xa = 1, xb = 0, ya = 1, yb = 0; for (let q = 1; q < i; q++) { const b = layers[q].box; if (b && !layers[q].pour) { xa = Math.min(xa, b.x); xb = Math.max(xb, b.x + b.w); ya = Math.min(ya, b.y); yb = Math.max(yb, b.y + b.h); } } l.box = xb > xa ? { x: xa, y: ya, w: xb - xa, h: yb - ya } : ant; return; } const a = Math.max(l.box.x, x0), c = Math.min(l.box.x + l.box.w, x1); /* na altura também: o molho nunca desce abaixo da última comida, para não cair no prato nem na frente da tigela */ const y0 = Math.min(l.box.y, ant.y + ant.h * 0.5), y1 = Math.min(l.box.y + l.box.h, ant.y + ant.h), h0 = y1 - y0; l.box = c - a >= 0.06 ? { x: a, w: c - a, y: y0, h: h0 >= 0.03 ? h0 : ant.h } : ant; });
       const iFizz = show.type === 'bebidas' ? (show.stepKeys || []).findIndex((k) => FIZZ.has(k)) : -1;
       if (iFizz > 0) { const c = document.createElement('canvas'); c.className = 'b-fizz'; wrap.appendChild(c); fizz = { i: iFizz, c, g: c.getContext('2d'), on: false, bolhas: [], t0: 0, pontos: [0.12, 0.3, 0.46, 0.63, 0.8, 0.93].map((u) => ({ u, em: Math.random() * 1.5, rajada: 0 })) }; }
     } else shotEls = show.steps.map((s) => { const im = new Image(); im.className = 'shot'; im.alt = ''; im.src = sceneUrl(s.img); shotsEl.appendChild(im); return im; });
@@ -66,12 +73,12 @@
   /* primeira etapa cuja peça ou foto ainda não terminou de carregar */
   const stepsReady = () => { for (let i = 0; i < layers.length; i++) { const l = layers[i], f = frameEls[i]; if ((l.box && !l.pour && !l.im.complete) || (l.bottle && !l.bottle.complete) || (f && !f.complete)) return i; } return layers.length; };
   /* centraliza um item dentro de uma faixa com rolagem, sem cortá-lo */
-  const centerIn = (box, el) => { if (!box || !el) return; const a = box.getBoundingClientRect(), b = el.getBoundingClientRect(); box.scrollLeft += b.left - a.left - (a.width - b.width) / 2; };
+  const centerIn = (box, el) => { if (!box || !el) return; const a = ret(box), b = ret(el); box.scrollLeft += b.left - a.left - (a.width - b.width) / 2; };
   /* o título nunca vaza do cartão: nomes longos diminuem até caber */
   const fitTitle = () => {
     const a = $('#t1'), b = $('#t2'), host = a.closest('.title') || a.parentElement, card = a.closest('.copy') || host; host.style.fontSize = ''; a.style.whiteSpace = b.style.whiteSpace = 'nowrap'; a.style.display = b.style.display = 'block'; a.style.width = b.style.width = 'max-content';
     const cs = getComputedStyle(card), room = card.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); let size = parseFloat(getComputedStyle(host).fontSize);
-    const wide = Math.max(a.getBoundingClientRect().width, b.getBoundingClientRect().width); if (wide > room && room > 0) { size = Math.max(20, Math.floor((size * room) / wide)); host.style.fontSize = size + 'px'; }
+    const wide = Math.max(ret(a).width, ret(b).width); if (wide > room && room > 0) { size = Math.max(20, Math.floor((size * room) / wide)); host.style.fontSize = size + 'px'; }
     a.style.width = b.style.width = '';
   };
   addEventListener('resize', () => fitTitle());
@@ -95,9 +102,9 @@
   let shadowOn = true, fxDone = false, fxPlate = null;
   /* montagem: cada ingrediente cai e bate na pilha, conforme a rolagem */
   const renderBuild = (pos, n) => {
-    const win = $('#win'), mob = innerWidth <= 800, B = window.SM.BOARD, bg = $('.b-bg'), Ww = win.clientWidth;
+    const win = $('#win'), mob = IW() <= 800, B = window.SM.BOARD, bg = $('.b-bg'), Ww = win.clientWidth;
     /* no celular a cena fica acima do cartão */
-    const Hw = mob ? Math.round($('.copy').getBoundingClientRect().top - win.getBoundingClientRect().top + 26) : win.clientHeight;
+    const Hw = mob ? Math.round(ret($('.copy')).top - ret(win).top + 26) : win.clientHeight;
     shotsEl.style.height = Hw + 'px';
     /* posição real da tábua na foto, com object-fit: cover */
     const iw = bg.naturalWidth || 1536, ih = bg.naturalHeight || 864, cover = Math.max(Ww / iw, Hw / ih);
@@ -130,10 +137,10 @@
         const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oy + (b.y + b.h / 2) * ih * sc;
         const a = clamp(local / 0.16), s = clamp((local - 0.12) / 0.7), o = clamp((local - 0.84) / 0.16), inA = 1 - Math.pow(1 - a, 3), e = s * s * (3 - 2 * s), ang = e * Math.PI * 5.4 - Math.PI / 2;
         const spotX = mid + Math.cos(ang) * wid * 0.42 * e, spotY = cy + Math.sin(ang) * hh * 0.38 * e, tipY = spotY - Math.max(70, Hw * 0.15);
-        const ral = /^ralador/.test(l.pour || ''), lh = ral ? 0.56 * iw * sc * 0.72 /* o ralador tem sempre o tamanho que usa na pizza, mesmo que passe do topo da tela */ : Math.max(wid * 0.7, (spotY + 40) / 0.98), lw = lh * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 2)), off = lh + 60, hidden = local <= 0 || local >= 1;
+        const ral = /^ralador/.test(l.pour || ''), lh = l.pour === 'raladorchocolate' ? 0.56 * iw * sc * 0.42 : ral ? 0.56 * iw * sc * 0.72 /* o ralador tem sempre o tamanho que usa na pizza, mesmo que passe do topo da tela */ : Math.max(wid * 0.7, (spotY + 40) / 0.98), lw = lh * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 2)), off = lh + 60, hidden = local <= 0 || local >= 1;
         l.bottle.style.visibility = hidden ? 'hidden' : 'visible'; l.bottle.style.width = lw + 'px'; l.bottle.style.height = lh + 'px'; l.bottle.style.left = spotX - lw * (ral ? 0.5 : 0.62) + (ral ? Math.sin(s * 120) * 3 : 0) + 'px'; l.bottle.style.top = spotY - lh * 0.98 - (1 - inA) * off - o * o * off + 'px'; l.bottle.style.transformOrigin = '50% 60%'; l.bottle.style.transform = `rotate(${Math.sin(s * (ral ? 120 : 40)) * (ral ? 1.2 : 1.6)}deg)`;
         /* raspas de chocolate: copo alto chega perto do topo, então o ralador vem deitado pela esquerda, onde cabe na tela, sem cobrir o chantilly */
-        const rc = l.pour === 'raladorchocolate', topoRc = oy + b.y * ih * sc, xRc = mid - wid * 0.1, yRc = topoRc + Math.min(hh * 0.05, 24);
+        const rc = false /* o ralador sempre vem de cima, também no chocolate */, topoRc = oy + b.y * ih * sc, xRc = mid - wid * 0.1, yRc = topoRc + Math.min(hh * 0.05, 24);
         if (rc) { const t = 85 * Math.PI / 180, cxR = xRc + lh * 0.1 - lh / 2 * Math.sin(t) + Math.sin(s * 120) * 3 - (1 - inA + o * o) * wid, cyR = yRc - lh / 2 * Math.cos(t) - (1 - inA) * off - o * o * off; l.bottle.style.left = cxR - lw / 2 + 'px'; l.bottle.style.top = cyR - lh / 2 + 'px'; l.bottle.style.transformOrigin = '50% 50%'; l.bottle.style.transform = `rotate(${-85 + Math.sin(s * 120) * 1.2}deg)`; }
         /* o queijo esfrega no ralador e vai diminuindo; os fios crescem por baixo da aba */
         if (ral) { const rub = caindoRub(s), q0 = l.bottle.querySelector('.g-queijo'); q0.style.transform = `translate3d(${rub * lh * 0.012}px,${rub * lh * 0.14}px,0) scale(${1 - e * 0.3})`; }
@@ -218,12 +225,15 @@
         /* o bico fica sempre dentro da tela, mesmo quando a janela é baixa e corta o alto do copo */
         /* despeja pela borda direita do copo: a lata ou a jarra fica ao lado, sem cobrir a bebida */
         /* lata, jarra, garrafa e bule têm tamanho real fixo em relação à cena, igual em todas as bebidas, sem depender da altura do copo */
-        const garrafa = /^garrafa/.test(l.pour), buleP = l.pour === 'jarrabule', inox = l.pour === 'jarrainox', espelho = /^jarra/.test(l.pour) /* jarra não tem rótulo: vem pela esquerda do copo, onde cabe inteira */, lipX = mid + wid * (espelho ? -0.3 : lata ? 0.36 : 0.3), lipY = Math.max(lata || espelho ? topY : topY - Math.max(10, hh * 0.04), Hw * (mob ? 0.14 : 0.07)), lh = ih * sc * (lata ? 0.44 : garrafa ? 0.5 : buleP ? 0.42 : inox ? 0.44 : 0.46), lw = lh * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 2)), incl = (lata ? -96 : garrafa ? -108 : espelho ? 38 : -42) * inA * (1 - o * 0.85), rad = (incl * Math.PI) / 180;
+        /* taça de milkshake afina embaixo: o jato cai perto do centro e para na superfície do shake, nunca ao lado do pé da taça */
+        const taca = SHOWS[cur].type === 'shakes', fundoTaca = topY + hh * 0.72; /* taça afina embaixo: o fundo de dentro fica no alto do pé */
+        const garrafa = /^garrafa/.test(l.pour), buleP = l.pour === 'jarrabule', inox = l.pour === 'jarrainox', espelho = /^jarra/.test(l.pour) /* jarra não tem rótulo: vem pela esquerda do copo, onde cabe inteira */, lipX = mid + wid * (espelho ? -0.12 : 0.12) /* o bico fica sobre a boca do copo, perto do centro: o jato cai dentro, nunca rente à parede */, lipY = Math.max(topY - Math.max(14, hh * 0.07), Hw * (mob ? 0.14 : 0.07)), lh = ih * sc * (lata ? 0.44 : garrafa ? 0.5 : buleP ? 0.42 : inox ? 0.44 : 0.46) * (mob ? 0.74 : 1) /* no celular, lata e jarra cabem na tela */, lw = lh * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 2)), incl = (lata ? -96 : garrafa ? -108 : espelho ? 38 : -42) * inA * (1 - o * 0.85), rad = (incl * Math.PI) / 180;
         const bule = l.pour === 'jarrabule', dxB = ((lata ? 0.22 : garrafa ? 0.5 : bule ? 0.01 : 0.05) - 0.5) * lw, dyB = ((lata ? 0.03 : garrafa ? 0.01 : bule ? 0.18 : 0.1) - 0.5) * lh, xicara = wid / hh > 1.2;
         const dxM = espelho ? -dxB : dxB, cxT = lipX - (dxM * Math.cos(rad) - dyB * Math.sin(rad)) + (espelho ? -1 : 1) * fora * wid * 1.6, cyT = lipY - (dxM * Math.sin(rad) + dyB * Math.cos(rad)) - fora * (lipY + lh);
         l.bottle.style.visibility = local <= 0 || local >= 1 ? 'hidden' : 'visible'; l.bottle.style.width = lw + 'px'; l.bottle.style.height = lh + 'px'; l.bottle.style.left = cxT - lw / 2 + 'px'; l.bottle.style.top = cyT - lh / 2 + 'px'; l.bottle.style.transformOrigin = '50% 50%'; l.bottle.style.transform = `rotate(${incl}deg)${espelho ? ' scaleX(-1)' : ''}`;
-        const jorra = s > 0 && s < 1 && o === 0, land = xicara ? topY + hh * 0.15 : bottom - hh * 0.06 - e * hh * 0.8, fio = Math.min(14, Math.max(5, wid * 0.07)); l.stream.style.visibility = jorra ? 'visible' : 'hidden';
-        if (jorra) { l.stream.style.left = lipX - fio / 2 + 'px'; l.stream.style.top = lipY + 'px'; l.stream.style.width = fio + 'px'; l.stream.style.height = Math.max(0, land - lipY) + 'px'; }
+        /* o jato é fino e para na superfície da bebida (o nível que está subindo), nunca atravessa o líquido nem o fundo de vidro */
+        const superficie = bottom - e * hh * 1.04, fundoCopo = taca ? fundoTaca : bottom - hh * 0.09, jorra = s > 0 && s < 1 && o === 0, land = xicara ? topY + hh * 0.15 : Math.max(lipY + 4, Math.min(fundoCopo, superficie)), fio = Math.min(8, Math.max(3, wid * 0.03)); l.stream.style.visibility = jorra ? 'visible' : 'hidden';
+        if (jorra) { l.stream.style.left = lipX - fio / 2 + 'px'; l.stream.style.top = lipY + 'px'; l.stream.style.width = fio + 'px'; l.stream.style.height = Math.max(0, land - lipY) + 'px'; l.stream.style.borderRadius = fio + 'px'; }
         const lv = ((bottom - e * hh * 1.04 - oy) / (ih * sc)) * 100, maskB = s >= 1 ? 'none' : xicara ? `radial-gradient(ellipse ${(e * wid * 0.7 + 1).toFixed(1)}px ${(e * hh * 0.62 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(topY + hh * 0.2 - oy).toFixed(1)}px,#000 86%,transparent 100%)` : `linear-gradient(180deg,transparent ${(lv - 0.5).toFixed(2)}%,#000 ${(lv + 0.5).toFixed(2)}%)`;
         frame.style.opacity = s > 0 ? 1 : 0; frame.style.webkitMaskImage = maskB; frame.style.maskImage = maskB; l.im.style.visibility = 'hidden';
         return;
@@ -234,7 +244,7 @@
         let ultima = l.box; for (let q = i - 1; q >= 0 && !ultima; q--) ultima = layers[q].box;
         const b0 = ultima || { x: 0.5, y: 0.33, w: 0.3, h: 0.1 }, wB = Math.max(b0.w, 0.12), b = { x: b0.x + b0.w / 2 - wB / 2, y: b0.y, w: wB, h: b0.h }, left = ox + b.x * iw * sc, wid = b.w * iw * sc, topY = oy + b.y * ih * sc, hh = b.h * ih * sc;
         const a = clamp(local / 0.22), s = clamp((local - 0.2) / 0.6), o = clamp((local - 0.82) / 0.18), zig = Math.sin(s * Math.PI * 5), inA = 1 - Math.pow(1 - a, 3);
-        const tipX = left + wid * (0.06 + 0.88 * s), targetY = topY + hh * (0.3 + zig * 0.14), spray = l.pour === 'spraychantilly', tipY = spray ? Math.max(targetY - Math.max(46, Hw * 0.085), Hw * 0.11) : targetY - Math.max(46, Hw * 0.085), bh2 = l.pour === 'requeijao' ? Hw * 0.56 : Math.max(wid * 1.15, Hw * 0.42), bw2 = bh2 * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 3)), off = tipY + 40;
+        const spray = l.pour === 'spraychantilly', bordaCopo = spray && layers[0] && layers[0].box ? oy + layers[0].box.y * ih * sc : null /* chantilly: o jato termina na borda da taça, onde o creme fica, e não dentro do shake */, tipX = left + wid * (0.06 + 0.88 * s), targetY = bordaCopo !== null ? bordaCopo + hh * 0.01 * zig : topY + hh * (0.3 + zig * 0.14), tipY = spray ? Math.max(targetY - Math.max(46, Hw * 0.085), Hw * 0.11) : targetY - Math.max(46, Hw * 0.085), bh2 = l.pour === 'requeijao' ? Hw * 0.56 : Math.max(wid * 1.15, Hw * 0.42), bw2 = bh2 * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 3)), off = tipY + 40;
         const angle = (spray ? 270 - inA * 12 : 268 - inA * 33) + zig * (spray ? 1.5 : 3) + o * 25, by = tipY - (1 - inA) * off - o * o * off; /* inclinado, com o corpo do frasco para cima e para a direita */
         const hidden = local <= 0 || local >= 1;
         l.bottle.style.visibility = hidden ? 'hidden' : 'visible'; l.bottle.style.height = bh2 + 'px'; l.bottle.style.left = tipX - bw2 / 2 + 'px'; l.bottle.style.top = by + 'px'; l.bottle.style.transform = `rotate(${angle}deg)`;
@@ -259,6 +269,13 @@
         return;
       }
       if (frame && !l.box) { frame.style.opacity = local; l.im.style.visibility = 'hidden'; return; } /* etapa sem queda: a foto se transforma */
+      if (l.box && frame && /^gelo/.test((SHOWS[cur].stepKeys || [])[i] || '') && ['drinks', 'bebidas', 'sucos'].includes(SHOWS[cur].type) && /picado|^gelo$/.test((SHOWS[cur].stepKeys || [])[i]) && l.box.h > 0.12) {
+        /* monte de gelo: em vez de um bloco enorme caindo, o gelo vai enchendo o copo de baixo para cima */
+        const e = clamp(local / 0.8), sm = e * e * (3 - 2 * e), fundo = l.box.y + l.box.h, lv = (fundo - sm * l.box.h * 1.04) * 100;
+        const mk = local >= 0.8 ? 'none' : `linear-gradient(180deg,transparent ${(lv - 1.2).toFixed(2)}%,#000 ${(lv + 1.2).toFixed(2)}%)`;
+        frame.style.opacity = local > 0 ? 1 : 0; frame.style.webkitMaskImage = mk; frame.style.maskImage = mk; l.im.style.visibility = 'hidden';
+        return;
+      }
       if (l.box) {
         /* a peça saiu da foto real: cai até o ponto exato em que está nessa foto */
         const pw = l.box.w * iw * sc, ph = l.box.h * ih * sc, px = ox + l.box.x * iw * sc - cx, py = oy + l.box.y * ih * sc - baseY;
@@ -292,7 +309,11 @@
       el.style.clipPath = u >= 1 ? 'none' : `circle(${easeIO(u) * 78}% at 60% 52%)`;
       const m = reduce ? 1 : clamp((t + W) / (1 + W)), k = s.kb; el.style.transform = `translate3d(${lerp(k[2], k[4], m)}%,${lerp(k[3], k[5], m)}%,0) scale(${lerp(k[0], k[1], m)})`;
     });
-    const idx = Math.floor(pos + 0.1 > n - 1 ? n - 1 : pos + 0.1); if (idx !== stepNow) { const first = stepNow === -1; stepNow = idx; setCopy(show.steps[idx], idx, first); fxKind = show.steps[idx].fx; }
+    /* montagem: o texto segue o mesmo relógio da animação (n + 0,5) e só mostra o nome do prato depois que a última peça pousa */
+    let idx;
+    if (show.recipe) { const bp = clamp(p) * (n + 0.5); idx = show.done && bp >= n - 0.05 ? n : Math.min(n - 1, Math.floor(bp + 0.1)); }
+    else idx = Math.floor(pos + 0.1 > n - 1 ? n - 1 : pos + 0.1);
+    if (idx !== stepNow) { const first = stepNow === -1, s = idx === n ? show.done : show.steps[idx]; stepNow = idx; setCopy(s, Math.min(idx, n - 1), first); fxKind = s.fx; }
     ringEl.style.strokeDashoffset = 100 - clamp(p) * 100;
     cue.style.opacity = 1 - clamp(p / 0.02); cue.style.visibility = p > 0.022 ? 'hidden' : 'visible';
   };
@@ -300,7 +321,7 @@
   /* ---------- fumaça e faíscas dentro da janela ---------- */
   const cv = $('#fx'), g = cv.getContext('2d'); let W = 0, H = 0; const parts = [];
   const sprite = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), r = x.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(235,225,210,.34)'); r.addColorStop(0.5, 'rgba(225,215,200,.13)'); r.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = r; x.fillRect(0, 0, 128, 128); return c; })();
-  const size = () => { const b = cv.getBoundingClientRect(); W = cv.width = Math.min(b.width, 1400) || 2; H = cv.height = W * (b.height / b.width) || 2; };
+  const size = () => { const b = ret(cv); W = cv.width = Math.min(b.width, 1400) || 2; H = cv.height = W * (b.height / b.width) || 2; };
   new ResizeObserver(size).observe(cv);
   const spawn = (k) => {
     const cx = 0.64 * W, cy = 0.68 * H, sp = W * 0.26, q = { k, life: 0, x: cx + (Math.random() - 0.5) * sp, y: cy, vx: (Math.random() - 0.5) * 0.3, vy: 0, r: 2, max: 1 };
@@ -358,15 +379,15 @@
     wave.style.clipPath = `polygon(${pts.join(',')},100% 120%,0 120%)`; line.setAttribute('d', lp.join(' '));
   };
   /* recomeça o prato com a cena limpa: a comida nunca aparece se desmontando */
-  const voltarAoInicio = () => { p = 0; scrollTo({ top: sectionRange().top, behavior: 'instant' }); };
+  const voltarAoInicio = () => { p = 0; rolarPara({ top: sectionRange().top, behavior: 'instant' }); };
   const switchShow = (i, { scroll = true } = {}) => {
     if (busy) return; if (i === cur) { if (scroll) voltarAoInicio(); return; }
     busy = true; const nx = SHOWS[i], c = nx.colors;
-    const apply = () => { cur = i; p = 0; if (scroll) scrollTo(0, sectionRange().top); buildShots(nx); setVars(c); refreshPick(); setIsland(DISHES.find((d) => d.show === nx.id)); renderScene(); };
+    const apply = () => { cur = i; p = 0; if (scroll) rolarPara(0, sectionRange().top); buildShots(nx); setVars(c); refreshPick(); setIsland(DISHES.find((d) => d.show === nx.id)); renderScene(); };
     if (reduce) { apply(); busy = false; return; }
     wave.style.background = c.page; wave.style.visibility = 'visible'; wv.on = true; wv.level = -0.12; wv.amp = 0;
     wb.splice(0).forEach((b) => b.remove());
-    for (let k = 0; k < 26; k++) { const b = document.createElement('i'), s = 4 + Math.random() * 14; b.style.cssText = `position:absolute;left:${Math.random() * 100}%;bottom:-20px;width:${s}px;height:${s}px;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.85),rgba(255,255,255,.08) 65%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)`; wave.appendChild(b); wb.push(b); gsap.to(b, { y: -innerHeight - 60, x: (Math.random() - 0.5) * 80, duration: 0.9 + Math.random() * 0.8, delay: Math.random() * 0.6, ease: 'power1.in' }); }
+    for (let k = 0; k < 26; k++) { const b = document.createElement('i'), s = 4 + Math.random() * 14; b.style.cssText = `position:absolute;left:${Math.random() * 100}%;bottom:-20px;width:${s}px;height:${s}px;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.85),rgba(255,255,255,.08) 65%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)`; wave.appendChild(b); wb.push(b); gsap.to(b, { y: -IH() - 60, x: (Math.random() - 0.5) * 80, duration: 0.9 + Math.random() * 0.8, delay: Math.random() * 0.6, ease: 'power1.in' }); }
     gsap.timeline({ onComplete() { wave.style.visibility = 'hidden'; wave.style.clipPath = ''; wave.style.opacity = ''; wv.on = false; busy = false; } })
       .to(wv, { level: 1.14, duration: 1.3, ease: 'power2.inOut' }, 0).to(wv, { amp: 5, duration: 0.45, ease: 'power2.out' }, 0).to(wv, { amp: 0, duration: 0.45, ease: 'power2.in' }, 0.85)
       .call(apply, null, 1.3).to(wave, { opacity: 0, duration: 0.45 }, 1.32);
@@ -389,7 +410,7 @@
   /* carrega em segundo plano, um arquivo por vez, os outros sabores do tipo aberto */
   const preloaded = new Set(), preQueue = []; let preBusy = false;
   const preNext = () => { const u = preQueue.shift(); if (!u) { preBusy = false; return; } preBusy = true; const i = new Image(); i.onload = i.onerror = preNext; i.src = u; };
-  const preloadType = (type) => { if (preloaded.has(type)) return; preloaded.add(type); SHOWS.filter((s) => s.type === type && s.frames).forEach((s) => s.frames.forEach((n, i) => { preQueue.push(`assets/frames/${n}.jpg`); if (window.SM.PIECES[n] && !(s.pours && s.pours[i])) preQueue.push(`assets/frames/${n}-peca.png`); })); if (!preBusy) setTimeout(preNext, 1200); };
+  const preloadType = (type) => { if (preloaded.has(type)) return; preloaded.add(type); SHOWS.filter((s) => s.type === type && s.frames).forEach((s) => s.frames.forEach((n, i) => { preQueue.push(`assets/frames/${n}.jpg?v=${VER}`); if (window.SM.PIECES[n] && !(s.pours && s.pours[i])) preQueue.push(`assets/frames/${n}-peca.png?v=${VER}`); })); if (!preBusy) setTimeout(preNext, 1200); };
   const refreshPick = () => {
     const show = SHOWS[cur];
     $$('.bub').forEach((b) => { const on = b.dataset.type === show.type; b.setAttribute('aria-checked', on); b.tabIndex = on ? 0 : -1; });
@@ -415,13 +436,48 @@
   /* ---------- cardápio: grade que expande ---------- */
   const bento = $('#bento'); let filter = 'burger', query = '', list = [], tiles = [], open = -1, caseBusy = false, touched = false, inView = false, autoT = 0, cyc = 0;
   /* a altura da linha acompanha a largura: o bloco largo sempre mostra a comida e a mesa, sem cortar */
-  const medirBlocos = () => { const cs = getComputedStyle(bento), cols = cs.gridTemplateColumns.split(' ').length, gap = parseFloat(cs.columnGap) || 0; if (bento.clientWidth) bento.style.setProperty('--row', `${(((bento.clientWidth - gap * (cols - 1)) / cols) * 2 + gap) / 2.2}px`); };
+  const medirBlocos = () => { const cs = getComputedStyle(bento), cols = cs.gridTemplateColumns.split(' ').length, gap = parseFloat(cs.columnGap) || 0; if (bento.clientWidth) bento.style.setProperty('--row', `${(((bento.clientWidth - gap * (cols - 1)) / cols) * 2 + gap) / 2.2}px`); montarGrade(cols); enquadrarEm(bento); };
+  /* tamanho de cada bloco: segue um padrão de 8, e os últimos blocos se ajustam para fechar a linha, sem buraco no fim da grade */
+  const montarGrade = (cols) => {
+    const n = tiles.length, destaque = bento.classList.contains('featured'), sp = [];
+    if (!n) return;
+    if (cols >= 4) {
+      const G = ['big', '', 'tall', '', 'wide', 'wide', 'wide', 'wide'], FIM = { 0: [], 1: ['full'], 2: ['wide', 'wide'], 3: ['wide', '', ''] };
+      if (destaque) { const cheios = Math.floor(n / 8) * 8; for (let i = 0; i < cheios; i++) sp.push(G[i % 8]); let r = n - cheios; if (r >= 4) { sp.push('big', '', 'tall', ''); r -= 4; } sp.push(...FIM[r]); }
+      else { const r = n % 4; for (let i = 0; i < n - r; i++) sp.push(''); sp.push(...FIM[r]); }
+    } else {
+      const G = ['big', '', '', 'wide', '', '', 'wide', 'wide'];
+      for (let i = 0; i < n; i++) sp.push(destaque ? G[i % 8] : '');
+      /* em duas colunas, se sobrar meia linha, o último bloco ocupa a linha inteira */
+      const celulas = sp.reduce((s, k) => s + (k === 'big' ? 4 : k === 'wide' ? 2 : 1), 0);
+      if (celulas % 2 && sp[n - 1] === '') sp[n - 1] = 'wide';
+    }
+    tiles.forEach((t, i) => { t.classList.remove('t-big', 't-tall', 't-wide', 't-full'); if (sp[i]) t.classList.add('t-' + sp[i]); });
+  };
   new ResizeObserver(medirBlocos).observe(bento);
   const chipsEl = $('#chips');
+  /* caixa da comida na foto final: união das peças que caem (molhos e líquidos ficam de fora, a área deles pode pegar fumaça) */
+  const caixaPrato = (s) => { const medida = (window.SM_DISH || {})[(s.frames || [])[(s.frames || []).length - 1]]; if (medida) return medida.join(','); /* medida na foto final (dish-boxes.js); sem ela, a união das peças */ let x0 = 1, y0 = 1, x1 = 0, y1 = 0; (s.frames || []).forEach((f, i) => { const b = window.SM.PIECES[f]; if (!b || (s.pours && s.pours[i])) return; x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h); }); return x1 > x0 ? [x0, y0, x1 - x0, y1 - y0].map((v) => v.toFixed(4)).join(',') : ''; };
+  /* enquadra a foto no bloco: a comida inteira aparece, centralizada e grande, em qualquer formato (alto, largo, quadrado), sem cortar copo nem pizza */
+  const enquadrar = (img) => {
+    const d = img.dataset.d, box = img.parentElement; if (!d || !img.naturalWidth || !box) return;
+    const tw = box.clientWidth, th = box.clientHeight; if (!tw || !th) return;
+    const [x, y, w, h] = d.split(',').map(Number), iw = img.naturalWidth, ih = img.naturalHeight, cobre = Math.max(tw / iw, th / ih);
+    const z = clamp(Math.min((0.8 * tw) / (w * iw * cobre), (0.72 * th) / (h * ih * cobre)), 1, 1.9);
+    /* comida larga em bloco estreito (pizza em bloco alto): a foto encolhe até a comida caber na largura, e o alto e o pé da foto se dissolvem no fundo escuro */
+    let S = cobre * z; if (w * iw * S > 0.96 * tw) S = Math.max(box.classList.contains('cat') || box.classList.contains('cat-fly') ? cobre /* card de categoria: a foto sempre preenche o card com o ambiente real */ : tw / iw, (0.94 * tw) / (w * iw));
+    const W = iw * S, H = ih * S, sobra = H < th - 1;
+    const left = clamp(tw / 2 - (x + w / 2) * W, tw - W, 0), top = sobra ? clamp(th * 0.5 - (y + h / 2) * H, 0, th - H) : clamp(th * 0.46 - (y + h / 2) * H, th - H, 0);
+    img.classList.add('enq'); img.style.width = W + 'px'; img.style.height = H + 'px'; img.style.left = left + 'px'; img.style.top = top + 'px';
+    const mk = sobra ? 'linear-gradient(transparent,#000 14%,#000 86%,transparent)' : ''; img.style.webkitMaskImage = mk; img.style.maskImage = mk;
+    /* sobra espaço acima e abaixo: o próprio ambiente da foto (mesa, luz, fumaça), desfocado, preenche o bloco em vez de um fundo escuro */
+    box.classList.toggle('amb', sobra); if (sobra) box.style.setProperty('--amb', `url("${img.currentSrc || img.src}")`);
+  };
+  const enquadrarEm = (raiz) => $$('img.art[data-d]', raiz).forEach(enquadrar);
+  document.addEventListener('load', (e) => { if (e.target.matches && e.target.matches('img.art[data-d]')) enquadrar(e.target); }, true);
   const artHtml = (d) => {
     const s = d.show && showById(d.show);
-    /* o enquadramento acompanha o topo da comida: copo alto não corta e a mesa continua aparecendo */
-    if (s) { const topo = (s.frames || []).reduce((m, f, i) => { const b = window.SM.PIECES[f]; return b && !(s.pours && s.pours[i]) ? Math.min(m, b.y) : m; }, 0.3), y = Math.round(clamp((topo - 0.03) / 0.192) * 100); return `<img class="art" src="${showThumb(s)}" style="--art-y:${y}%" alt="" loading="lazy">`; }
+    if (s) return `<img class="art" src="${showThumb(s)}" data-d="${caixaPrato(s)}" alt="" loading="lazy">`;
     const hue = ((d.type.items.findIndex((x) => x[0] === d.name) % 4) - 1.5) * 9;
     return `<span class="art typ" style="filter:hue-rotate(${hue}deg);background:radial-gradient(90% 90% at 75% 15%,${d.type.c[0]},${d.type.c[1]})"><u>${esc(d.name)}</u><s></s><q></q></span>`;
   };
@@ -446,7 +502,7 @@
     bento.className = 'bento' + (!q && !buscaGeral && list.length >= 5 ? ' featured' : '') + (!q && !buscaGeral && list.length === 5 ? ' five' : '');
     bento.innerHTML = list.map((d, i) => `<button class="tile" type="button" data-i="${i}" aria-label="${esc(d.name)}, R$ ${brl(d.price)}">${artHtml(d)}<span class="lab" style="--c:${d.type.c[0]}"><i></i><b>${esc(d.name)}</b><small>R$ ${brl(d.price)}</small></span></button>`).join('') +
       `<div class="case" role="dialog" aria-modal="false" aria-label="Prato aberto"><div class="box"></div><button class="nb p-close" type="button" aria-label="Fechar o prato">✕</button><div class="panel"><div class="p-top"><span id="pNum"></span><span id="pCena"></span></div><h3 class="p-t" id="pT"></h3><p class="p-meta" id="pMeta"></p><p class="p-desc" id="pDesc"></p><div class="p-res" id="pRes"></div><div class="p-size" id="pSize" role="group" aria-label="Tamanho"></div><div class="p-acts"><button class="p-see" id="pSee" type="button" hidden>Ver o preparo</button><button class="p-add" id="pAdd" type="button"><span>Adicionar ao pedido</span><i aria-hidden="true">+</i></button><button class="nb" id="pPrev" type="button" aria-label="Prato anterior">${ARROWL}</button><button class="nb" id="pNext" type="button" aria-label="Próximo prato">${ARROW}</button></div></div></div>`;
-    medirBlocos(); tiles = $$('.tile', bento); open = -1;
+    tiles = $$('.tile', bento); open = -1; medirBlocos();
     tiles.forEach((el, i) => el.addEventListener('click', () => { touched = true; stopAuto(); showCase(i, true); }));
     $('.p-close', bento).addEventListener('click', () => { touched = true; stopAuto(); hideCase(true); }); $('.box', bento).addEventListener('click', () => { touched = true; stopAuto(); hideCase(true); });
     $('#pNext').addEventListener('click', () => { touched = true; stopAuto(); goCase(1); }); $('#pPrev').addEventListener('click', () => { touched = true; stopAuto(); goCase(-1); });
@@ -456,10 +512,10 @@
   };
   const box = () => $('.box', bento);
   let caseTop = 0;
-  const rectOf = (el) => { const a = bento.getBoundingClientRect(), r = el.getBoundingClientRect(); return { left: r.left - a.left, top: r.top - a.top - caseTop, width: r.width, height: r.height }; };
+  const rectOf = (el) => { const a = ret(bento), r = ret(el); return { left: r.left - a.left, top: r.top - a.top - caseTop, width: r.width, height: r.height }; };
   /* o prato aberto nunca passa da altura da tela, para os botões ficarem à vista */
-  const caseH = () => Math.max(Math.min(bento.clientHeight, innerHeight - 96), 460);
-  const caseTarget = () => { const w = bento.clientWidth, h = caseH(); bento.style.setProperty('--ch', h + 'px'); return innerWidth <= 800 ? { left: 0, top: 0, width: w, height: h * 0.3 } : { left: 0, top: 0, width: w * 0.62 - 6, height: h }; };
+  const caseH = () => Math.max(Math.min(bento.clientHeight, IH() - 96), 460);
+  const caseTarget = () => { const w = bento.clientWidth, h = caseH(); bento.style.setProperty('--ch', h + 'px'); return IW() <= 800 ? { left: 0, top: 0, width: w, height: h * 0.46 } /* no celular a foto ocupa quase metade, o painel fica embaixo */ : { left: 0, top: 0, width: w * 0.62 - 6, height: h }; };
   const fillCase = (i) => {
     const d = list[i]; box().innerHTML = artHtml(d); box().firstChild.classList.remove('x');
     $('#pNum').innerHTML = `<b>${pad(i + 1)}</b> / ${pad(list.length)}`; $('#pCena').textContent = d.show ? 'PREPARO EM CENA' : 'PREPARO EM BREVE';
@@ -468,12 +524,12 @@
   };
   const paintRes = () => { if (open < 0 || !$('#pRes')) return; const d = list[open]; $('#pRes').innerHTML = `<div><b>R$ ${brl(isPrice())}</b>${SIZES.length > 1 ? `tamanho ${SIZES[isSize][0]}` : 'preço'}</div><div><b>${d.type.min} min</b>preparo</div><div><b>R$ ${brl(isPrice() * 0.9)}</b>no Pix</div>`; };
   /* a grade agora é longa: o prato abre na altura em que a pessoa está */
-  const placeCase = () => { const h = caseH(), a = bento.getBoundingClientRect().top, ct = Math.round(clamp(78 - a, 0, Math.max(0, bento.clientHeight - h))); caseTop = ct; bento.style.setProperty('--ct', ct + 'px'); };
-  const showCase = (i, user) => { if (caseBusy || open >= 0) return; caseBusy = true; open = i; fillCase(i); placeCase(); gsap.set(box(), rectOf(tiles[i])); bento.classList.add('is-open'); if (user) { const vt = bento.getBoundingClientRect().top + caseTop; if (Math.abs(vt - 78) > 4) scrollBy({ top: vt - 78, behavior: reduce ? 'auto' : 'smooth' }); } gsap.to(box(), { ...caseTarget(), duration: reduce ? 0 : 0.72, ease: 'power3.inOut', onComplete() { caseBusy = false; if (user) $('.p-close', bento).focus({ preventScroll: true }); } }); gsap.delayedCall(reduce ? 0 : 0.42, () => open >= 0 && bento.classList.add('is-panel')); };
-  const hideCase = (user) => { if (caseBusy || open < 0) return; caseBusy = true; const i = open; bento.classList.remove('is-panel'); gsap.to(box(), { ...rectOf(tiles[i]), duration: reduce ? 0 : 0.62, ease: 'power3.inOut', onComplete() { bento.classList.remove('is-open'); open = -1; caseBusy = false; if (user) tiles[i].focus({ preventScroll: true }); } }); };
+  const placeCase = () => { const h = caseH(), a = ret(bento).top, ct = Math.round(clamp(78 - a, 0, Math.max(0, bento.clientHeight - h))); caseTop = ct; bento.style.setProperty('--ct', ct + 'px'); };
+  const showCase = (i, user) => { if (caseBusy || open >= 0) return; caseBusy = true; open = i; fillCase(i); placeCase(); gsap.set(box(), rectOf(tiles[i])); bento.classList.add('is-open'); if (user) { const vt = ret(bento).top + caseTop; if (Math.abs(vt - 78) > 4) rolarDe({ top: vt - 78, behavior: reduce ? 'auto' : 'smooth' }); } gsap.to(box(), { ...caseTarget(), duration: reduce ? 0 : 0.72, ease: 'power3.inOut', onUpdate() { enquadrarEm(box()); }, onComplete() { caseBusy = false; enquadrarEm(box()); if (user) $('.p-close', bento).focus({ preventScroll: true }); } }); gsap.delayedCall(reduce ? 0 : 0.42, () => open >= 0 && bento.classList.add('is-panel')); };
+  const hideCase = (user) => { if (caseBusy || open < 0) return; caseBusy = true; const i = open; bento.classList.remove('is-panel'); gsap.to(box(), { ...rectOf(tiles[i]), duration: reduce ? 0 : 0.62, ease: 'power3.inOut', onUpdate() { enquadrarEm(box()); }, onComplete() { bento.classList.remove('is-open'); open = -1; caseBusy = false; if (user) tiles[i].focus({ preventScroll: true }); } }); };
   const goCase = (d) => { if (caseBusy || open < 0) return; caseBusy = true; open = (open + d + list.length) % list.length; bento.classList.remove('is-panel'); const nu = document.createElement('div'); nu.style.cssText = 'position:absolute;inset:0'; nu.innerHTML = artHtml(list[open]); gsap.set(nu, { clipPath: d > 0 ? 'inset(0% 0% 0% 100%)' : 'inset(0% 100% 0% 0%)' }); box().appendChild(nu); gsap.to(nu, { clipPath: 'inset(0% 0% 0% 0%)', duration: reduce ? 0 : 0.68, ease: 'power3.inOut', onComplete() { fillCase(open); bento.classList.add('is-panel'); caseBusy = false; } }); };
   bento.addEventListener('keydown', (e) => { if (open < 0) return; touched = true; stopAuto(); if (e.key === 'Escape') { e.preventDefault(); hideCase(true); } else if (e.key === 'ArrowRight') { e.preventDefault(); goCase(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); goCase(-1); } });
-  addEventListener('resize', () => { if (open >= 0 && !caseBusy) gsap.set(box(), caseTarget()); });
+  addEventListener('resize', () => { if (open >= 0 && !caseBusy) { gsap.set(box(), caseTarget()); enquadrarEm(box()); } });
   /* sem ninguém mexendo, um prato abre sozinho */
   const stopAuto = () => clearTimeout(autoT);
   const auto = () => { if (touched || !inView || reduce || !list.length) return; if (open < 0) { showCase(cyc % list.length); autoT = setTimeout(auto, 3000); } else if (cyc % 2 === 0) { goCase(1); cyc++; autoT = setTimeout(auto, 2800); } else { hideCase(); cyc++; autoT = setTimeout(auto, 3400); } };
@@ -487,8 +543,9 @@
   const catsEl = $('#cats'), catTypes = [...CAT_ORDER.map((id) => TYPES.find((t) => t.id === id)), ...TYPES.filter((t) => !CAT_ORDER.includes(t.id))].filter(Boolean);
   catsEl.innerHTML = catTypes.map((t) => {
     const d = DISHES.find((x) => x.type.id === t.id && x.show && showById(x.show)), n = t.items.length, sz = CAT_SIZE[t.id] || 'n';
-    return `<button class="cat cat-${sz}${d ? ' has-img' : ''}" type="button" data-id="${t.id}" aria-label="${esc(t.name)}, ${n} sabores" style="--c:${t.c[0]};--d:${t.c[1]}">${d ? `<img class="art" src="${showThumb(showById(d.show))}" alt="" loading="lazy">` : '<span class="cat-deco"><s></s><q></q></span>'}<span class="cat-go" aria-hidden="true">${ARROW}</span><span class="cat-lab"><b>${esc(t.name)}</b><small>${n} sabores · ${t.min} min</small></span></button>`;
+    return `<button class="cat cat-${sz}${d ? ' has-img' : ''}" type="button" data-id="${t.id}" aria-label="${esc(t.name)}, ${n} sabores" style="--c:${t.c[0]};--d:${t.c[1]}">${d ? `<img class="art" src="${showThumb(showById(d.show))}" data-d="${caixaPrato(showById(d.show))}" alt="" loading="lazy">` : '<span class="cat-deco"><s></s><q></q></span>'}<span class="cat-go" aria-hidden="true">${ARROW}</span><span class="cat-lab"><b>${esc(t.name)}</b><small>${n} sabores · ${t.min} min</small></span></button>`;
   }).join('');
+  new ResizeObserver(() => enquadrarEm(catsEl)).observe(catsEl);
   $('#catsLine').textContent = `${TYPES.length} categorias · ${DISHES.length} sabores`;
   /* os produtos só aparecem depois de escolher uma categoria */
   const menuSec = $('#cardapio');
@@ -500,21 +557,21 @@
     centerIn(chipsEl, $(`.chip[data-id="${filter}"]`, chipsEl));
   };
   /* fora de uma categoria, a busca procura em todo o cardápio: a lista de resultados abre e o cursor continua na caixa de busca */
-  $('#qGeral').addEventListener('input', (e) => { const v = e.target.value; if (!v.trim()) return; e.target.value = ''; document.documentElement.classList.add('com-categoria'); menuSec.hidden = false; touched = true; stopAuto(); buscaGeral = true; tagAtiva = ''; query = v; const qi = $('#q'); qi.value = v; closeNow(); renderChips(); renderBento(); scrollTo({ top: menuSec.getBoundingClientRect().top + scrollY - 40, behavior: 'instant' }); qi.focus({ preventScroll: true }); qi.setSelectionRange(v.length, v.length); });
+  $('#qGeral').addEventListener('input', (e) => { const v = e.target.value; if (!v.trim()) return; e.target.value = ''; document.documentElement.classList.add('com-categoria'); menuSec.hidden = false; touched = true; stopAuto(); buscaGeral = true; tagAtiva = ''; query = v; const qi = $('#q'); qi.value = v; closeNow(); renderChips(); renderBento(); rolarPara({ top: ret(menuSec).top + SY() - 40, behavior: 'instant' }); qi.focus({ preventScroll: true }); qi.setSelectionRange(v.length, v.length); });
   /* transição: o card cresce até ocupar a tela, sobe e revela os produtos */
   let catBusy = false;
   catsEl.addEventListener('click', (e) => {
     const c = e.target.closest('.cat'); if (!c || catBusy) return;
     if (reduce) { openCat(c.dataset.id, true); return; }
-    catBusy = true; const r = c.getBoundingClientRect(), fly = c.cloneNode(true); fly.classList.add('cat-fly'); fly.setAttribute('aria-hidden', 'true'); fly.tabIndex = -1;
+    catBusy = true; const r = ret(c), fly = c.cloneNode(true); fly.classList.add('cat-fly'); fly.setAttribute('aria-hidden', 'true'); fly.tabIndex = -1;
     gsap.set(fly, { left: r.left, top: r.top, width: r.width, height: r.height, opacity: 1, scale: 1, y: 0 }); document.body.appendChild(fly); c.style.visibility = 'hidden';
-    const titulo = $('.cat-lab b', fly), rotulo = $('.cat-lab', fly), seta = $('.cat-go', fly), grande = Math.min(innerWidth * 0.11, 128);
+    const titulo = $('.cat-lab b', fly), rotulo = $('.cat-lab', fly), seta = $('.cat-go', fly), grande = Math.min(IW() * 0.11, 128);
     gsap.timeline({ onComplete() { fly.remove(); c.style.visibility = ''; catBusy = false; } })
       .to(seta, { opacity: 0, scale: 0.6, duration: 0.2 }, 0)
-      .to(fly, { left: 0, top: 0, width: innerWidth, height: innerHeight, borderRadius: 0, duration: 0.72, ease: 'power3.inOut' }, 0)
+      .to(fly, { left: 0, top: 0, width: IW(), height: IH(), borderRadius: 0, duration: 0.72, ease: 'power3.inOut', onUpdate() { enquadrarEm(fly); } /* a foto acompanha o card crescendo, até a tela cheia */ }, 0)
       .to(titulo, { fontSize: grande, duration: 0.72, ease: 'power3.inOut' }, 0)
       .to(rotulo, { left: 'var(--gut)', bottom: 40, duration: 0.72, ease: 'power3.inOut' }, 0)
-      .call(() => { openCat(c.dataset.id, false); scrollTo({ top: menuSec.getBoundingClientRect().top + scrollY - 40, behavior: 'instant' }); }, null, 0.86)
+      .call(() => { openCat(c.dataset.id, false); rolarPara({ top: ret(menuSec).top + SY() - 40, behavior: 'instant' }); }, null, 0.86)
       .to(fly, { yPercent: -100, duration: 0.7, ease: 'power3.inOut' }, 0.9);
   });
   /* "Cardápio" no topo fecha os produtos e volta para os cards */
@@ -522,7 +579,7 @@
   /* botão que acompanha a lista: a lista some e os cards de categoria voltam */
   $('#catBack').addEventListener('click', () => {
     if (catBusy) return; catBusy = true; closeNow(); try { sessionStorage.removeItem('sm_cat'); } catch (e) { /* sem armazenamento */ }
-    const fim = () => { menuSec.hidden = true; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; document.documentElement.classList.remove('com-categoria'); gsap.set(menuSec, { clearProps: 'opacity,transform' }); scrollTo({ top: $('#categorias').getBoundingClientRect().top + scrollY - 40, behavior: 'instant' }); catBusy = false; if (!reduce) gsap.from($$('.cat', catsEl), { y: 26, opacity: 0, scale: 0.97, duration: 0.5, stagger: 0.015, ease: 'power3.out', clearProps: 'transform,opacity' }); $('.cat', catsEl).focus({ preventScroll: true }); };
+    const fim = () => { menuSec.hidden = true; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; document.documentElement.classList.remove('com-categoria'); gsap.set(menuSec, { clearProps: 'opacity,transform' }); rolarPara({ top: ret($('#categorias')).top + SY() - 40, behavior: 'instant' }); catBusy = false; if (!reduce) gsap.from($$('.cat', catsEl), { y: 26, opacity: 0, scale: 0.97, duration: 0.5, stagger: 0.015, ease: 'power3.out', clearProps: 'transform,opacity' }); $('.cat', catsEl).focus({ preventScroll: true }); };
     if (reduce) { fim(); return; }
     /* transição: uma cortina sobe, cobre a tela, e ao sair revela o menu */
     const cortina = document.createElement('div'); cortina.className = 'menu-cortina'; cortina.setAttribute('aria-hidden', 'true'); cortina.innerHTML = '<b>Menu</b>'; document.body.appendChild(cortina);
@@ -532,6 +589,12 @@
       .call(fim, null, 0.7)
       .to(cortina, { yPercent: -100, duration: 0.65, ease: 'power3.inOut' }, 0.78);
   });
+  /* recarregar a página sempre volta ao início; só a atualização automática do localhost (sm_auto) reabre onde estava */
+  let voltaAuto = false; try { voltaAuto = sessionStorage.getItem('sm_auto') === '1'; sessionStorage.removeItem('sm_auto'); if (!voltaAuto) { sessionStorage.removeItem('sm_cat'); sessionStorage.removeItem('sm_show'); } } catch (e) { /* sem armazenamento */ }
+  if ('scrollRestoration' in history) history.scrollRestoration = voltaAuto ? 'auto' : 'manual';
+  if (!voltaAuto) { if (location.hash) history.replaceState(null, '', location.pathname + location.search); rolarPara(0, 0); }
+  /* logo: fecha o que estiver aberto e volta ao topo da página principal */
+  $('.logo').addEventListener('click', (e) => { e.preventDefault(); closeNow(); menuSec.hidden = true; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; document.documentElement.classList.remove('com-categoria', 'montando'); try { sessionStorage.removeItem('sm_cat'); } catch (er) { /* sem armazenamento */ } rolarPara({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
   try { const salva = sessionStorage.getItem('sm_cat'); if (salva && TYPES.some((t) => t.id === salva)) setTimeout(() => openCat(salva, false), 0); } catch (e) { /* sem armazenamento */ }
   if (!reduce) { const io = new IntersectionObserver((es) => { if (!es[0].isIntersecting) return; io.disconnect(); gsap.from($$('.cat', catsEl), { y: 30, opacity: 0, scale: 0.97, duration: 0.65, stagger: 0.025, ease: 'power3.out', clearProps: 'transform,opacity' }); }, { threshold: 0.08 }); io.observe(catsEl); }
 
@@ -625,11 +688,11 @@
     });
   }
   /* a comida cai na caixa, a caixa fecha, voa para a sacola e a sacola entra no botão Pedido */
-  let ultimoClique = null; document.addEventListener('click', (e) => { if (e.clientX || e.clientY) ultimoClique = { x: e.clientX, y: e.clientY }; }, true);
+  let ultimoClique = null; document.addEventListener('click', (e) => { if (e.clientX || e.clientY) ultimoClique = { x: e.clientX / ZZ(), y: e.clientY / ZZ() }; }, true);
   function embalar(d) {
-    const s = d.show && showById(d.show), alvo = $('#orderBtn').getBoundingClientRect(), ini = ultimoClique || { x: innerWidth / 2, y: innerHeight * 0.7 };
-    const BW = 124, BH = 88, bx = Math.max(16, Math.min(innerWidth - BW - 16, ini.x - BW / 2)), by = Math.max(150, Math.min(innerHeight - BH - 24, ini.y - BH - 46));
-    const bagW = 92, bagH = 112, bagX = Math.max(10, Math.min(innerWidth - bagW - 10, alvo.left + alvo.width / 2 - bagW / 2)), bagY = alvo.bottom + 10;
+    const s = d.show && showById(d.show), alvo = ret($('#orderBtn')), ini = ultimoClique || { x: IW() / 2, y: IH() * 0.7 };
+    const BW = 124, BH = 88, bx = Math.max(16, Math.min(IW() - BW - 16, ini.x - BW / 2)), by = Math.max(150, Math.min(IH() - BH - 24, ini.y - BH - 46));
+    const bagW = 92, bagH = 112, bagX = Math.max(10, Math.min(IW() - bagW - 10, alvo.left + alvo.width / 2 - bagW / 2)), bagY = alvo.bottom + 10;
     const cena = document.createElement('div'); cena.className = 'pk'; cena.setAttribute('aria-hidden', 'true');
     const foto = s ? `background-image:url('${showThumb(s)}')` : `background:radial-gradient(circle at 70% 20%,${d.type.c[0]},${d.type.c[1]})`;
     cena.innerHTML = `<div class="pk-box"><i class="pk-back"></i><span class="pk-food" style="${foto}"></span><i class="pk-front"></i><i class="pk-lid"><b></b></i></div><div class="pk-bag"><svg viewBox="0 0 92 112"><path d="M30 22V12a16 16 0 0 1 32 0v10" fill="none" stroke="#7A5230" stroke-width="4" stroke-linecap="round"/><path d="M6 22h80l5 86a4 4 0 0 1-4 4H5a4 4 0 0 1-4-4z" fill="#C49763"/><path d="M6 22h80l1 12H5z" fill="#A87C4B"/><circle cx="46" cy="70" r="15" fill="#C8321E"/><circle cx="46" cy="70" r="7" fill="#F4EEDF"/></svg></div>`;
@@ -694,7 +757,7 @@
   let holdDesde = 0, holdFree = 0, naMontagem = false; const raizEl = document.documentElement;
   document.addEventListener('click', (e) => { const alvo = e.target.closest && e.target.closest('a,button'); if (alvo && !alvo.matches('#pSee') && !(alvo.tagName === 'BUTTON' && alvo.closest('#stage'))) { holdFree = performance.now() + 1800; raizEl.classList.remove('montando'); } }, true);
   gsap.ticker.add((t) => {
-    const { top, h } = sectionRange(); target = clamp((scrollY - top) / h);
+    const { top, h } = sectionRange(); target = clamp((SY() - top) / h);
     const show = SHOWS[cur]; let alvo = target;
     /* a montagem espera a peça carregar: nenhum ingrediente aparece sem cair */
     if (show.recipe) { const pronta = stepsReady(); if (pronta < layers.length) alvo = Math.min(target, pronta / (show.steps.length + 0.5)); }
@@ -709,15 +772,15 @@
     let segurar = false;
     if (!reduce && show.recipe && open < 0 && !drawer.classList.contains('on')) {
       const fim = top + h, n0 = show.steps.length, pronto = (n0 - 0.18) / (n0 + 0.5), agora = performance.now(), liberada = p >= pronto, parada = stepsReady() < layers.length;
-      if (parada && scrollY >= fim - 1) { if (!holdDesde) holdDesde = agora; if (agora - holdDesde > 15000) { holdFree = agora + 8000; holdDesde = 0; } } else holdDesde = 0;
+      if (parada && SY() >= fim - 1) { if (!holdDesde) holdDesde = agora; if (agora - holdDesde > 15000) { holdFree = agora + 8000; holdDesde = 0; } } else holdDesde = 0;
       segurar = !liberada && agora >= holdFree && naMontagem;
-      naMontagem = scrollY >= top - 1 && scrollY <= fim + 1;
+      naMontagem = SY() >= top - 1 && SY() <= fim + 1;
     } else naMontagem = false;
     raizEl.classList.toggle('montando', segurar);
     if (stageVisible) { renderScene(); drawFx(); drawFizz(); }
     updateWave(t);
-    const past = scrollY > top + h + innerHeight * 0.2, end = innerHeight + scrollY > document.documentElement.scrollHeight - 90;
-    island.classList.toggle('on', past && !end && open < 0 && !drawer.classList.contains('on')); topEl.classList.toggle('on-cream', scrollY > top + h + innerHeight * 0.92); topEl.classList.toggle('in-list', !menuSec.hidden);
+    const past = SY() > top + h + IH() * 0.2, end = IH() + SY() > document.documentElement.scrollHeight - 90;
+    island.classList.toggle('on', past && !end && open < 0 && !drawer.classList.contains('on')); topEl.classList.toggle('on-cream', SY() > top + h + IH() * 0.92); topEl.classList.toggle('in-list', !menuSec.hidden);
   });
 
   /* ---------- início ---------- */
@@ -726,11 +789,11 @@
   setVars(SHOWS[cur].colors); buildShots(SHOWS[cur]); refreshPick(); setIsland(DISHES.find((d) => d.show === SHOWS[cur].id));
   /* em localhost, a página se atualiza sozinha quando chegam fotos ou código novos (menos com pedido em andamento) */
   if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
-    let assinatura = null; const arquivos = ['index.html', 'js/data.js', 'js/pieces.js', 'js/recipes-built.js', 'js/ingredients.js', 'js/app.js', 'css/style.css'];
-    const conferir = async () => { try { const textos = await Promise.all(arquivos.map((a) => fetch(a, { cache: 'no-store' }).then((r) => r.text()))); const nova = textos.map((t) => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return h; }).join(); if (assinatura && nova !== assinatura) { if (order.length || open >= 0 || busy) return; try { sessionStorage.setItem('sm_show', SHOWS[cur].id); } catch (e) { /* sem armazenamento */ } location.reload(); return; } assinatura = nova; } catch (e) { /* servidor reiniciando */ } };
+    let assinatura = null; const arquivos = ['index.html', 'js/data.js', 'js/pieces.js', 'js/recipes-built.js', 'js/ingredients.js', 'js/dish-boxes.js', 'js/escala.js', 'js/app.js', 'css/style.css'];
+    const conferir = async () => { try { const textos = await Promise.all(arquivos.map((a) => fetch(a, { cache: 'no-store' }).then((r) => r.text()))); const nova = textos.map((t) => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return h; }).join(); if (assinatura && nova !== assinatura) { if (order.length || open >= 0 || busy) return; try { sessionStorage.setItem('sm_show', SHOWS[cur].id); sessionStorage.setItem('sm_auto', '1'); } catch (e) { /* sem armazenamento */ } location.reload(); return; } assinatura = nova; } catch (e) { /* servidor reiniciando */ } };
     conferir(); setInterval(conferir, 20000);
   } renderChips(); renderBento(); paintOrder();
-  const first = SHOWS[0], urls = [...new Set([...(first.frames || []).flatMap((n) => [`assets/frames/${n}.jpg`, `assets/frames/${n}-peca.png`]), ...typeGroups.map((g) => showThumb(SHOWS[g.first])), sceneUrl(window.SM.BOARD.img)])]; /* só o primeiro prato e as bolhas: o resto carrega quando for aberto */ let done = 0; const plate = $('.ld-plate'), ldn = $('#ldn');
+  const first = SHOWS[0], urls = [...new Set([...(first.frames || []).flatMap((n) => [`assets/frames/${n}.jpg?v=${VER}`, `assets/frames/${n}-peca.png?v=${VER}`]), ...typeGroups.map((g) => showThumb(SHOWS[g.first])), sceneUrl(window.SM.BOARD.img)])]; /* só o primeiro prato e as bolhas: o resto carrega quando for aberto */ let done = 0; const plate = $('.ld-plate'), ldn = $('#ldn');
   const finish = () => {
     const tl = gsap.timeline();
     tl.to('#loader', { opacity: 0, duration: reduce ? 0 : 0.5, onComplete() { const el = $('#loader'); if (el) el.remove(); } });

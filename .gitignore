@@ -1,0 +1,23 @@
+# segredos e configurações locais: nunca vão para o GitHub
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials*.json
+service-account*.json
+
+# sistema e editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# dependências e arquivos gerados
+node_modules/
+__pycache__/
+*.log
+*.tmp

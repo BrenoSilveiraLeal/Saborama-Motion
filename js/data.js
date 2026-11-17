@@ -16,31 +16,8 @@
       { code: 'FRETEGRATIS', kind: 'ship', label: 'Frete grátis' },
     ],
 
-    /* Pratos com cena. kb = movimento lento da foto: [zoom inicial, zoom final, x%, y% inicial, x%, y% final] */
-    SHOWS: [
-      {
-        id: 'smash-classico', type: 'burger', name: 'Smash Clássico', price: 32.9,
-        colors: { page: '#F2A81D', ink: '#1F1004', soft: 'rgba(31,16,4,.74)', accent: '#C8321E' },
-        steps: [
-          { img: 'burger-1', kick: 'Passo 1 · Na chapa', t1: 'Bate', t2: 'na chapa', text: 'A carne moída na hora encontra o aço quente e é prensada de uma vez. A borda fica rendada e crocante.', stat: [230, '°C'], fx: 'smoke', kb: [1.14, 1.02, 2, 2, -2, -1] },
-          { img: 'burger-2', kick: 'Passo 2 · O queijo', t1: 'O cheddar', t2: 'derrete', text: 'A fatia cai sobre a carne ainda chiando e escorre pelas bordas sem pressa.', stat: [45, 'seg'], fx: 'steam', kb: [1.03, 1.14, -2, 0, 1, -2] },
-          { img: 'burger-3', kick: 'Passo 3 · A montagem', t1: 'Tudo', t2: 'vai caindo', text: 'Alface, tomate e picles caem sobre o pão tostado, cada um no seu lugar.', stat: [6, 'camadas'], fx: 'drops', kb: [1.12, 1.03, 0, 4, 0, -3] },
-          { img: 'burger-4', kick: 'Passo 4 · O fechamento', t1: 'Fecha com', t2: 'brioche', text: 'O pão com gergelim desce devagar sobre a carne e o queijo derretido.', stat: [90, 'seg'], fx: 'steam', kb: [1.04, 1.14, 0, -4, 1, 3] },
-          { img: 'burger-5', kick: 'Passo 5 · Pronto', t1: 'Smash', t2: 'Clássico', text: 'Sai direto para a mesa, ainda soltando vapor.', stat: [12, 'min'], fx: 'steam', kb: [1.12, 1.01, 2, 1, 0, 0] },
-        ],
-      },
-      {
-        id: 'pizza-calabresa', type: 'pizza', name: 'Calabresa Defumada', price: 54.9,
-        colors: { page: '#C4301C', ink: '#FFF4DC', soft: 'rgba(255,244,220,.82)', accent: '#FFC93C' },
-        steps: [
-          { img: 'pizza-1', kick: 'Passo 1 · A massa', t1: 'A massa', t2: 'se abre', text: 'As mãos esticam o disco devagar, com farinha no ar e sem rolo, para preservar as bolhas.', stat: [48, 'h de fermentação'], fx: 'flour', kb: [1.14, 1.02, 2, 1, -2, -1] },
-          { img: 'pizza-2', kick: 'Passo 2 · O molho', t1: 'O molho', t2: 'gira', text: 'Tomate em espiral, do centro para a borda, com a concha encostando de leve.', stat: [120, 'g'], fx: 'flour', kb: [1.03, 1.13, 0, -2, 1, 2] },
-          { img: 'pizza-3', kick: 'Passo 3 · A cobertura', t1: 'A calabresa', t2: 'cai', text: 'Calabresa defumada, cebola roxa e mussarela chovem sobre o disco.', stat: [5, 'ingredientes'], fx: 'drops', kb: [1.12, 1.03, 0, 4, 0, -3] },
-          { img: 'pizza-4', kick: 'Passo 4 · O forno', t1: 'Entra', t2: 'na lenha', text: 'A pá entra na boca do forno. Em segundos, a borda infla e o queijo borbulha.', stat: [420, '°C'], fx: 'embers', kb: [1.04, 1.15, -2, 0, 2, -2] },
-          { img: 'pizza-5', kick: 'Passo 5 · Pronta', t1: 'A fatia', t2: 'estica', text: 'A primeira fatia sobe puxando o queijo em fios longos.', stat: [18, 'min'], fx: 'steam', kb: [1.12, 1.01, 2, 1, 0, 0] },
-        ],
-      },
-    ],
+    /* pratos montados: gerados em ingredients.js a partir das receitas */
+    SHOWS: [],
 
     TYPES: [
       T('burger', 'Hambúrgueres', 12, ['#E8930F', '#9C4F0A'], `
