@@ -112,9 +112,11 @@
     const dishW = layers.reduce((m, l) => Math.max(m, l.box ? l.box.w : 0), 0.34), topoComida = layers.reduce((m, l) => (l.box && !l.pour ? Math.min(m, l.box.y) : m), 0.3), folga = mob ? 76 : 84, sc = mob ? Math.min(cover, Ww / (dishW * iw * 1.08), (Hw - folga) / (ih * (1 - topoComida))) : cover;
     /* a comida nunca encosta no topo: em janela larga, a foto desce até sobrar folga acima dela */
     const ox = mob ? (Ww * 0.5 - B.x * iw * sc) : (Ww - iw * sc) * 0.5, oy = sc < cover ? Hw - ih * sc : Math.max((Hw - ih * sc) * 0.5, Math.min(0, folga - topoComida * ih * sc));
-    const fade = $('.b-fade'); if (fade) fade.style.cssText = sc < cover ? `display:block;top:${oy - 1}px;height:${ih * sc * 0.3}px` : 'display:none';
-    const cx = ox + B.x * iw * sc, baseY = oy + B.y * ih * sc, boardW = B.w * iw * sc;
-    bg.style.cssText = `left:${ox}px;top:${oy}px;width:${iw * sc}px;height:${ih * sc}px`;
+    /* celular com prato largo: a foto encolhe para caber na largura; em vez de deixar o prato preso no pé com um vão escuro em cima, ele desce até encostar no cartão (o pé da foto fica atrás do cartão) */
+    let oyM = oy; if (mob && sc < cover) { const fundoComida = layers.reduce((m, l) => (l.box && !l.pour ? Math.max(m, l.box.y + l.box.h) : m), B.y); oyM = Math.max(oy, Math.min(Hw * 0.5, Hw - 34 - fundoComida * ih * sc)); }
+    const fade = $('.b-fade'); if (fade) fade.style.cssText = sc < cover ? `display:block;top:${oyM - 1}px;height:${ih * sc * 0.3}px` : 'display:none';
+    const cx = ox + B.x * iw * sc, baseY = oyM + B.y * ih * sc, boardW = B.w * iw * sc;
+    bg.style.cssText = `left:${ox}px;top:${oyM}px;width:${iw * sc}px;height:${ih * sc}px`;
     const fin = $('.b-final'); [fin, ...frameEls].forEach((el) => { el.style.left = bg.style.left; el.style.top = bg.style.top; el.style.width = bg.style.width; el.style.height = bg.style.height; });
     shadowOn = !frameEls.length;
     const totalT = layers.reduce((s, l, i) => s + (i < n - 1 ? l.g.t : 1 / l.g.ar), 0), avail = baseY - (mob ? 60 : 70), W = Math.min(boardW * 0.57, avail / totalT);
@@ -124,23 +126,23 @@
     /* no fim, a montagem se funde com a foto real do prato pronto */
     const f = reduce ? (pos >= n ? 1 : 0) : clamp((pos - (n - 0.12)) / 0.5); fin.style.opacity = f; stack.style.opacity = 1 - f; shadow.style.opacity = shadowOn ? 1 - f : 0;
     /* prato pronto: a fumaça sobe por trás dele, sem passar na frente */
-    const tb = layers[n - 1].box, bx = tb ? ox + (tb.x + tb.w / 2) * iw * sc : cx, bTop = tb ? oy + tb.y * ih * sc : baseY - totalT * W, bw = tb ? tb.w * iw * sc * 1.2 : W * 1.1, bh = baseY - bTop;
+    const tb = layers[n - 1].box, bx = tb ? ox + (tb.x + tb.w / 2) * iw * sc : cx, bTop = tb ? oyM + tb.y * ih * sc : baseY - totalT * W, bw = tb ? tb.w * iw * sc * 1.2 : W * 1.1, bh = baseY - bTop;
     fxDone = pos >= n - 0.02; fxPlate = { x: bx, y: bTop, w: bw, h: bh, top: 0 };
     const rx = bw * 0.62, ry = bh * 0.66, my = bTop + bh * 0.56, maskV = fxDone ? `radial-gradient(ellipse ${rx}px ${ry}px at ${bx}px ${my}px,transparent 82%,#000 100%)` : 'none';
     if (cv.style.webkitMaskImage !== maskV) { cv.style.webkitMaskImage = maskV; cv.style.maskImage = maskV; }
-    if (fizz) { const c0 = (layers[fizz.i - 1] && layers[fizz.i - 1].box) || { x: 0.56, y: 0.3, w: 0.2, h: 0.42 }, lo = reduce ? (pos >= fizz.i ? 1 : 0) : clamp((pos - fizz.i) / 0.82), sf = clamp((lo - 0.1) / 0.66), ef = sf * sf * (3 - 2 * sf); fizz.x0 = ox + (c0.x + c0.w * 0.2) * iw * sc; fizz.lx = c0.w * 0.6 * iw * sc; fizz.base = oy + (c0.y + c0.h * 0.87) * ih * sc; const cheio = oy + (c0.y + c0.h * 0.17) * ih * sc; fizz.nivel = fizz.base - (fizz.base - cheio) * ef; fizz.on = ef > 0.04; fizz.enchendo = sf > 0 && sf < 1; }
+    if (fizz) { const c0 = (layers[fizz.i - 1] && layers[fizz.i - 1].box) || { x: 0.56, y: 0.3, w: 0.2, h: 0.42 }, lo = reduce ? (pos >= fizz.i ? 1 : 0) : clamp((pos - fizz.i) / 0.82), sf = clamp((lo - 0.1) / 0.66), ef = sf * sf * (3 - 2 * sf); fizz.x0 = ox + (c0.x + c0.w * 0.2) * iw * sc; fizz.lx = c0.w * 0.6 * iw * sc; fizz.base = oyM + (c0.y + c0.h * 0.87) * ih * sc; const cheio = oyM + (c0.y + c0.h * 0.17) * ih * sc; fizz.nivel = fizz.base - (fizz.base - cheio) * ef; fizz.on = ef > 0.04; fizz.enchendo = sf > 0 && sf < 1; }
     let y = 0;
     layers.forEach((l, i) => {
       const local = reduce ? (pos >= i ? 1 : 0) : clamp((pos - i) / 0.82), w = W * l.g.w, h = w / l.g.ar, rest = y - (l.g.dy || 0) * W, frame = frameEls[i];
       if ((l.pour === 'mao' || /^ralador/.test(l.pour || '')) && frame) {
         /* a mão entra por cima, percorre a pizza em espiral e salpica o queijo, que vai cobrindo atrás dela */
-        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oy + (b.y + b.h / 2) * ih * sc;
+        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oyM + (b.y + b.h / 2) * ih * sc;
         const a = clamp(local / 0.16), s = clamp((local - 0.12) / 0.7), o = clamp((local - 0.84) / 0.16), inA = 1 - Math.pow(1 - a, 3), e = s * s * (3 - 2 * s), ang = e * Math.PI * 5.4 - Math.PI / 2;
         const spotX = mid + Math.cos(ang) * wid * 0.42 * e, spotY = cy + Math.sin(ang) * hh * 0.38 * e, tipY = spotY - Math.max(70, Hw * 0.15);
         const ral = /^ralador/.test(l.pour || ''), lh = l.pour === 'raladorchocolate' ? 0.56 * iw * sc * 0.42 : ral ? 0.56 * iw * sc * 0.72 /* o ralador tem sempre o tamanho que usa na pizza, mesmo que passe do topo da tela */ : Math.max(wid * 0.7, (spotY + 40) / 0.98), lw = lh * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 2)), off = lh + 60, hidden = local <= 0 || local >= 1;
         l.bottle.style.visibility = hidden ? 'hidden' : 'visible'; l.bottle.style.width = lw + 'px'; l.bottle.style.height = lh + 'px'; l.bottle.style.left = spotX - lw * (ral ? 0.5 : 0.62) + (ral ? Math.sin(s * 120) * 3 : 0) + 'px'; l.bottle.style.top = spotY - lh * 0.98 - (1 - inA) * off - o * o * off + 'px'; l.bottle.style.transformOrigin = '50% 60%'; l.bottle.style.transform = `rotate(${Math.sin(s * (ral ? 120 : 40)) * (ral ? 1.2 : 1.6)}deg)`;
         /* raspas de chocolate: copo alto chega perto do topo, então o ralador vem deitado pela esquerda, onde cabe na tela, sem cobrir o chantilly */
-        const rc = false /* o ralador sempre vem de cima, também no chocolate */, topoRc = oy + b.y * ih * sc, xRc = mid - wid * 0.1, yRc = topoRc + Math.min(hh * 0.05, 24);
+        const rc = false /* o ralador sempre vem de cima, também no chocolate */, topoRc = oyM + b.y * ih * sc, xRc = mid - wid * 0.1, yRc = topoRc + Math.min(hh * 0.05, 24);
         if (rc) { const t = 85 * Math.PI / 180, cxR = xRc + lh * 0.1 - lh / 2 * Math.sin(t) + Math.sin(s * 120) * 3 - (1 - inA + o * o) * wid, cyR = yRc - lh / 2 * Math.cos(t) - (1 - inA) * off - o * o * off; l.bottle.style.left = cxR - lw / 2 + 'px'; l.bottle.style.top = cyR - lh / 2 + 'px'; l.bottle.style.transformOrigin = '50% 50%'; l.bottle.style.transform = `rotate(${-85 + Math.sin(s * 120) * 1.2}deg)`; }
         /* o queijo esfrega no ralador e vai diminuindo; os fios crescem por baixo da aba */
         if (ral) { const rub = caindoRub(s), q0 = l.bottle.querySelector('.g-queijo'); q0.style.transform = `translate3d(${rub * lh * 0.012}px,${rub * lh * 0.14}px,0) scale(${1 - e * 0.3})`; }
@@ -148,38 +150,38 @@
         const caindo = s > 0 && o === 0;
         const fromY = rc ? yRc - 6 : ral ? spotY - lh * 0.22 : tipY, alvoY = rc ? yRc + Math.max(20, Hw * 0.03) : spotY, baseX = rc ? mid - wid * 0.08 : spotX; (l.shreds || []).forEach((p, k) => { if (!caindo) { p.style.opacity = 0; return; } const t = (s * 16 + k / l.shreds.length) % 1, jx = Math.sin(k * 12.9) * wid * (rc ? 0.14 : ral ? 0.09 : 0.03), jy = Math.cos(k * 7.7) * hh * (rc ? 0.02 : 0.08); p.style.opacity = t < 0.85 ? 1 : (1 - t) / 0.15; p.style.transform = `translate3d(${baseX + jx + t * jx * 0.8}px,${fromY + t * t * (alvoY - fromY + jy)}px,0) rotate(${k * 47 + t * 220}deg)`; });
         l.stream.style.visibility = 'hidden';
-        const maskM = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.56 + 1).toFixed(1)}px ${(e * hh * 0.56 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oy).toFixed(1)}px,#000 80%,transparent 100%)`;
+        const maskM = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.56 + 1).toFixed(1)}px ${(e * hh * 0.56 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oyM).toFixed(1)}px,#000 80%,transparent 100%)`;
         frame.style.opacity = s > 0 ? 1 : 0; frame.style.webkitMaskImage = maskM; frame.style.maskImage = maskM; l.im.style.visibility = 'hidden';
         return;
       }
       if (/^saleiro/.test(l.pour || '') && frame) {
         /* o saleiro entra de ponta-cabeça, sacode sobre o prato e o tempero cai em grãos */
-        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oy + (b.y + b.h / 2) * ih * sc;
+        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oyM + (b.y + b.h / 2) * ih * sc;
         const a = clamp(local / 0.16), s = clamp((local - 0.14) / 0.68), o = clamp((local - 0.84) / 0.16), inA = 1 - Math.pow(1 - a, 3), e = s * s * (3 - 2 * s);
         const spotX = mid + Math.sin(e * Math.PI * 3) * wid * 0.4, spotY = cy + Math.cos(e * Math.PI * 5) * hh * 0.28, lh = Math.max(130, Math.min(wid * 0.8, Hw * 0.32)), lw = lh * 0.5, tipX = spotX, tipY = spotY - Math.max(70, Hw * 0.16), off = tipY + lh;
         const sacode = s > 0 && o === 0 ? Math.sin(s * 150) : 0, ang = 150 + sacode * 7, cxS = tipX - 0.225 * lh, cyS = tipY - 0.39 * lh + sacode * 7 - (1 - inA) * off - o * o * off;
         l.bottle.style.visibility = local <= 0 || local >= 1 ? 'hidden' : 'visible'; l.bottle.style.width = lw + 'px'; l.bottle.style.height = lh + 'px'; l.bottle.style.left = cxS - lw / 2 + 'px'; l.bottle.style.top = cyS - lh / 2 + 'px'; l.bottle.style.transformOrigin = '50% 50%'; l.bottle.style.transform = `rotate(${ang}deg)`;
         const caindo = s > 0 && o === 0; (l.shreds || []).forEach((q, k) => { if (!caindo) { q.style.opacity = 0; return; } const t = (s * 14 + k / l.shreds.length) % 1, jx = Math.sin(k * 12.9) * wid * 0.07, jy = Math.cos(k * 7.7) * hh * 0.1; q.style.opacity = t < 0.88 ? 1 : (1 - t) / 0.12; q.style.transform = `translate3d(${tipX + jx * t * 1.4}px,${tipY + t * t * (spotY - tipY + jy)}px,0)`; });
         l.stream.style.visibility = 'hidden';
-        const maskS = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.6 + 1).toFixed(1)}px ${(e * hh * 0.6 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oy).toFixed(1)}px,#000 80%,transparent 100%)`;
+        const maskS = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.6 + 1).toFixed(1)}px ${(e * hh * 0.6 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oyM).toFixed(1)}px,#000 80%,transparent 100%)`;
         frame.style.opacity = s > 0 ? 1 : 0; frame.style.webkitMaskImage = maskS; frame.style.maskImage = maskS; l.im.style.visibility = 'hidden';
         return;
       }
       if (l.pour === 'colherpure' && frame) {
         /* purê: a colher deixa uma porção no prato e puxa, desenhando o rastro como na vida real */
-        const b = l.box || { x: 0.42, y: 0.52, w: 0.4, h: 0.14 }, left = ox + b.x * iw * sc, wid = b.w * iw * sc, topY = oy + b.y * ih * sc, hh = b.h * ih * sc;
+        const b = l.box || { x: 0.42, y: 0.52, w: 0.4, h: 0.14 }, left = ox + b.x * iw * sc, wid = b.w * iw * sc, topY = oyM + b.y * ih * sc, hh = b.h * ih * sc;
         const a = clamp(local / 0.14), s1 = clamp((local - 0.14) / 0.22), s2 = clamp((local - 0.36) / 0.44), o = clamp((local - 0.82) / 0.18), inA = 1 - Math.pow(1 - a, 3), e1 = s1 * s1 * (3 - 2 * s1), e2 = s2 * s2 * (3 - 2 * s2);
         const iniX = left + wid * 0.17, iniY = topY + hh * 0.62, fimX = left + wid * 0.98, fimY = topY + hh * 0.22, spotX = iniX + (fimX - iniX) * e2, spotY = iniY + (fimY - iniY) * e2 - Math.sin(s1 * Math.PI) * hh * 0.12;
         const lw = 0.56 * iw * sc * 0.42, lh = lw * ((l.bottle.naturalHeight || 1) / (l.bottle.naturalWidth || 1)), off = spotY + lh, incl = -4 - 14 * e2;
         l.bottle.style.visibility = local <= 0 || local >= 1 ? 'hidden' : 'visible'; l.bottle.style.height = 'auto'; l.bottle.style.width = lw + 'px'; l.bottle.style.left = spotX - lw * 0.2 + (1 - inA) * wid * 0.3 + o * wid * 0.3 + 'px'; l.bottle.style.top = spotY - lh * 0.82 - (1 - inA) * off - o * o * off + 'px'; l.bottle.style.transformOrigin = '20% 82%'; l.bottle.style.transform = `rotate(${incl}deg)`;
         l.stream.style.visibility = 'hidden';
-        const mx = iniX - ox, my = iniY - oy, ate = ((spotX + wid * 0.02 - ox) / (iw * sc)) * 100, maskU = s2 >= 1 ? 'none' : s2 > 0 ? `linear-gradient(90deg,#000 ${(ate - 0.6).toFixed(2)}%,transparent ${(ate + 0.4).toFixed(2)}%)` : `radial-gradient(ellipse ${(e1 * wid * 0.22 + 1).toFixed(1)}px ${(e1 * hh * 0.62 + 1).toFixed(1)}px at ${mx.toFixed(1)}px ${my.toFixed(1)}px,#000 82%,transparent 100%)`;
+        const mx = iniX - ox, my = iniY - oyM, ate = ((spotX + wid * 0.02 - ox) / (iw * sc)) * 100, maskU = s2 >= 1 ? 'none' : s2 > 0 ? `linear-gradient(90deg,#000 ${(ate - 0.6).toFixed(2)}%,transparent ${(ate + 0.4).toFixed(2)}%)` : `radial-gradient(ellipse ${(e1 * wid * 0.22 + 1).toFixed(1)}px ${(e1 * hh * 0.62 + 1).toFixed(1)}px at ${mx.toFixed(1)}px ${my.toFixed(1)}px,#000 82%,transparent 100%)`;
         frame.style.opacity = s1 > 0 ? 1 : 0; frame.style.webkitMaskImage = maskU; frame.style.maskImage = maskU; l.im.style.visibility = 'hidden';
         return;
       }
       if (/^colher/.test(l.pour || '') && frame) {
         /* colher de tempero: passa em espiral sobre a comida, inclinada, e os flocos caem da ponta */
-        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oy + (b.y + b.h / 2) * ih * sc;
+        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oyM + (b.y + b.h / 2) * ih * sc;
         const a = clamp(local / 0.16), s = clamp((local - 0.14) / 0.66), o = clamp((local - 0.82) / 0.18), inA = 1 - Math.pow(1 - a, 3), e = s * s * (3 - 2 * s), ang = e * Math.PI * 5.2 - Math.PI / 2;
         const lw = 0.56 * iw * sc * 0.42, lh = lw * ((l.bottle.naturalHeight || 1) / (l.bottle.naturalWidth || 1)), spotX = mid + Math.cos(ang) * wid * 0.42 * e, spotY = cy + Math.sin(ang) * hh * 0.38 * e, off = cy + lh, altura = Math.max(56, Math.min(Hw * 0.16, 130));
         const incl = -6 - 22 * clamp(s / 0.12) * (1 - clamp((local - 0.8) / 0.08)), rad = (incl * Math.PI) / 180, dxB = -0.21 * lw, dyB = -0.03 * lh, bicoX = dxB * Math.cos(rad) - dyB * Math.sin(rad), bicoY = dxB * Math.sin(rad) + dyB * Math.cos(rad), lipX = spotX, lipY = spotY - altura;
@@ -187,40 +189,42 @@
         l.bottle.style.visibility = hidden ? 'hidden' : 'visible'; l.bottle.style.height = 'auto'; l.bottle.style.width = lw + 'px'; l.bottle.style.left = lipX - (0.23 * lw + bicoX) + (1 - inA) * wid * 0.4 + o * wid * 0.4 + 'px'; l.bottle.style.top = lipY - (0.85 * lh + bicoY) - sobe + 'px'; l.bottle.style.transform = `rotate(${incl}deg)`; l.bottle.style.transformOrigin = '23% 85%';
         const caindo = s > 0.04 && s < 1 && o === 0; (l.shreds || []).forEach((q, k) => { if (!caindo) { q.style.opacity = 0; return; } const t = (s * 18 + k / l.shreds.length) % 1, jx = Math.sin(k * 12.9) * Math.min(26, wid * 0.05), jy = Math.cos(k * 7.7) * hh * 0.1; q.style.opacity = t < 0.85 ? 1 : (1 - t) / 0.15; q.style.transform = `translate3d(${lipX + jx * (0.35 + t)}px,${lipY + t * t * (altura + jy)}px,0) rotate(${k * 47 + t * 200}deg)`; });
         l.stream.style.visibility = 'hidden';
-        const maskS = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.56 + 1).toFixed(1)}px ${(e * hh * 0.56 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oy).toFixed(1)}px,#000 84%,transparent 100%)`;
+        const maskS = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.56 + 1).toFixed(1)}px ${(e * hh * 0.56 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oyM).toFixed(1)}px,#000 84%,transparent 100%)`;
         frame.style.opacity = s > 0 ? 1 : 0; frame.style.webkitMaskImage = maskS; frame.style.maskImage = maskS; l.im.style.visibility = 'hidden';
         return;
       }
       if (l.pour === 'concha' && l.espalha && frame) {
         /* pizza: a concha encosta no molho e gira em espiral do centro para a borda, espalhando */
-        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oy + (b.y + b.h / 2) * ih * sc;
+        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oyM + (b.y + b.h / 2) * ih * sc;
         const a = clamp(local / 0.16), s = clamp((local - 0.14) / 0.66), o = clamp((local - 0.82) / 0.18), inA = 1 - Math.pow(1 - a, 3), e = s * s * (3 - 2 * s), ang = e * Math.PI * 5.2 - Math.PI / 2;
         const lw = 0.56 * iw * sc * 0.62, lh = lw * ((l.bottle.naturalHeight || 1) / (l.bottle.naturalWidth || 1)), tipX = mid + Math.cos(ang) * wid * 0.44 * e, tipY = cy + Math.sin(ang) * hh * 0.4 * e, off = cy + lh;
         const hidden = local <= 0 || local >= 1, py = tipY - lh * 0.8 - (1 - inA) * off - o * o * off, px = tipX - lw * 0.26 + (1 - inA) * wid * 0.4 + o * wid * 0.4;
         l.bottle.style.visibility = hidden ? 'hidden' : 'visible'; l.bottle.style.height = 'auto'; l.bottle.style.width = lw + 'px'; l.bottle.style.left = px + 'px'; l.bottle.style.top = py + 'px'; l.bottle.style.transform = `rotate(${Math.sin(ang) * 4}deg)`; l.bottle.style.transformOrigin = '26% 80%';
         l.stream.style.visibility = 'hidden';
-        const maskC = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.56 + 1).toFixed(1)}px ${(e * hh * 0.56 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oy).toFixed(1)}px,#000 84%,transparent 100%)`;
+        const maskC = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.56 + 1).toFixed(1)}px ${(e * hh * 0.56 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oyM).toFixed(1)}px,#000 84%,transparent 100%)`;
         frame.style.opacity = s > 0 ? 1 : 0; frame.style.webkitMaskImage = maskC; frame.style.maskImage = maskC; l.im.style.visibility = 'hidden';
         return;
       }
       if (/^(concha|pegador)/.test(l.pour || '') && frame) {
         /* a concha entra, gira em espiral do centro para a borda espalhando o molho e sai */
-        const b = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oy + (b.y + b.h / 2) * ih * sc;
+        /* milkshake: a calda cai sobre o topo do chantilly, então a concha fica lá em cima, menor, e não desce até o copo */
+        const shake = SHOWS[cur].type === 'shakes'; let topoCreme = 1; if (shake) for (let q = 1; q < i; q++) { const bq = layers[q].box; if (bq) topoCreme = Math.min(topoCreme, bq.y); }
+        const b0 = l.box || { x: 0.42, y: 0.52, w: 0.52, h: 0.24 }, b = shake && topoCreme < 1 ? { x: b0.x, y: topoCreme, w: b0.w, h: Math.min(b0.h, 0.1) } : b0, wid = b.w * iw * sc, hh = b.h * ih * sc, mid = ox + (b.x + b.w / 2) * iw * sc, cy = oyM + (b.y + b.h / 2) * ih * sc;
         const a = clamp(local / 0.16), s = clamp((local - 0.14) / 0.66), o = clamp((local - 0.82) / 0.18), inA = 1 - Math.pow(1 - a, 3), e = s * s * (3 - 2 * s), ang = e * Math.PI * 5.2 - Math.PI / 2;
-        const lw = 0.56 * iw * sc * (l.pour === 'pegadormel' ? 0.34 : 0.62), lh = lw * ((l.bottle.naturalHeight || 1) / (l.bottle.naturalWidth || 1)), tipX = mid + Math.cos(ang) * wid * 0.44 * e, tipY = cy + Math.sin(ang) * hh * 0.4 * e, off = cy + lh;
+        const lw = 0.56 * iw * sc * (l.pour === 'pegadormel' ? 0.34 : shake ? 0.36 : 0.62), lh = lw * ((l.bottle.naturalHeight || 1) / (l.bottle.naturalWidth || 1)), tipX = mid + Math.cos(ang) * wid * 0.44 * e, tipY = cy + Math.sin(ang) * hh * 0.4 * e, off = cy + lh;
         /* a concha fica acima da comida e inclina: o molho sai pela borda e desce num fio até o prato */
-        const incl = -6 - 26 * clamp(s / 0.12) * (1 - clamp((local - 0.8) / 0.08)), rad = (incl * Math.PI) / 180, dxB = -0.21 * lw, dyB = -0.03 * lh, bicoX = dxB * Math.cos(rad) - dyB * Math.sin(rad), bicoY = dxB * Math.sin(rad) + dyB * Math.cos(rad), altura = Math.max(lh * 0.24, Math.min(Hw * 0.2, 170)), lipX = tipX, lipY = tipY - altura;
+        const incl = -6 - 26 * clamp(s / 0.12) * (1 - clamp((local - 0.8) / 0.08)), rad = (incl * Math.PI) / 180, dxB = -0.21 * lw, dyB = -0.03 * lh, bicoX = dxB * Math.cos(rad) - dyB * Math.sin(rad), bicoY = dxB * Math.sin(rad) + dyB * Math.cos(rad), altura = shake ? Math.max(14, Hw * 0.025) /* no shake o creme está no alto da tela: a concha despeja de pertinho, sem sair da tela */ : Math.max(lh * 0.24, Math.min(Hw * 0.2, 170)), lipX = tipX, lipY = tipY - altura;
         const hidden = local <= 0 || local >= 1, sobe = (1 - inA) * off + o * o * off, px = lipX - (0.23 * lw + bicoX) + (1 - inA) * wid * 0.4 + o * wid * 0.4, py = lipY - (0.85 * lh + bicoY) - sobe;
         l.bottle.style.visibility = hidden ? 'hidden' : 'visible'; l.bottle.style.height = 'auto'; l.bottle.style.width = lw + 'px'; l.bottle.style.left = px + 'px'; l.bottle.style.top = py + 'px'; l.bottle.style.transform = `rotate(${incl}deg)`; l.bottle.style.transformOrigin = '23% 85%';
         const escorre = s > 0.04 && s < 1 && o === 0; l.stream.style.visibility = escorre ? 'visible' : 'hidden';
         if (escorre) { const fio = l.pour === 'pegadormel' ? 4 : Math.max(7, Math.min(16, wid * 0.03)) * (1 - clamp((s - 0.9) / 0.1) * 0.6), desce = clamp((s - 0.04) / 0.06); l.stream.style.left = lipX - fio / 2 + 'px'; l.stream.style.top = lipY + 'px'; l.stream.style.width = fio + 'px'; l.stream.style.height = altura * desce + 2 + 'px'; }
-        const maskC = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.56 + 1).toFixed(1)}px ${(e * hh * 0.56 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oy).toFixed(1)}px,#000 84%,transparent 100%)`;
+        const maskC = s >= 1 ? 'none' : `radial-gradient(ellipse ${(e * wid * 0.56 + 1).toFixed(1)}px ${(e * hh * 0.56 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(cy - oyM).toFixed(1)}px,#000 84%,transparent 100%)`;
         frame.style.opacity = s > 0 ? 1 : 0; frame.style.webkitMaskImage = maskC; frame.style.maskImage = maskC; l.im.style.visibility = 'hidden';
         return;
       }
       if (l.fill && /^(jarra|lata|garrafa)/.test(l.pour || '') && frame) {
         /* bebida: a jarra ou a lata entra, inclina sobre o copo e o nível sobe; gelo e fruta caem depois */
-        const lata = /^lata/.test(l.pour), c0 = (layers[0] && layers[0].box) || (layers[i - 1] && layers[i - 1].box) || { x: 0.56, y: 0.3, w: 0.2, h: 0.42 } /* sempre o copo, mesmo com gelo ou limão já dentro */, wid = c0.w * iw * sc, topY = oy + c0.y * ih * sc, hh = c0.h * ih * sc, mid = ox + c0.x * iw * sc + wid / 2, bottom = topY + hh;
+        const lata = /^lata/.test(l.pour), c0 = (layers[0] && layers[0].box) || (layers[i - 1] && layers[i - 1].box) || { x: 0.56, y: 0.3, w: 0.2, h: 0.42 } /* sempre o copo, mesmo com gelo ou limão já dentro */, wid = c0.w * iw * sc, topY = oyM + c0.y * ih * sc, hh = c0.h * ih * sc, mid = ox + c0.x * iw * sc + wid / 2, bottom = topY + hh;
         const a = clamp(local / 0.16), s = clamp((local - 0.14) / 0.62), o = clamp((local - 0.8) / 0.2), inA = 1 - Math.pow(1 - a, 3), e = s * s * (3 - 2 * s), sai = o * o, fora = 1 - inA + sai;
         /* o bico fica sempre dentro da tela, mesmo quando a janela é baixa e corta o alto do copo */
         /* despeja pela borda direita do copo: a lata ou a jarra fica ao lado, sem cobrir a bebida */
@@ -234,7 +238,7 @@
         /* o jato é fino e para na superfície da bebida (o nível que está subindo), nunca atravessa o líquido nem o fundo de vidro */
         const superficie = bottom - e * hh * 1.04, fundoCopo = taca ? fundoTaca : bottom - hh * 0.09, jorra = s > 0 && s < 1 && o === 0, land = xicara ? topY + hh * 0.15 : Math.max(lipY + 4, Math.min(fundoCopo, superficie)), fio = Math.min(8, Math.max(3, wid * 0.03)); l.stream.style.visibility = jorra ? 'visible' : 'hidden';
         if (jorra) { l.stream.style.left = lipX - fio / 2 + 'px'; l.stream.style.top = lipY + 'px'; l.stream.style.width = fio + 'px'; l.stream.style.height = Math.max(0, land - lipY) + 'px'; l.stream.style.borderRadius = fio + 'px'; }
-        const lv = ((bottom - e * hh * 1.04 - oy) / (ih * sc)) * 100, maskB = s >= 1 ? 'none' : xicara ? `radial-gradient(ellipse ${(e * wid * 0.7 + 1).toFixed(1)}px ${(e * hh * 0.62 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(topY + hh * 0.2 - oy).toFixed(1)}px,#000 86%,transparent 100%)` : `linear-gradient(180deg,transparent ${(lv - 0.5).toFixed(2)}%,#000 ${(lv + 0.5).toFixed(2)}%)`;
+        const lv = ((bottom - e * hh * 1.04 - oyM) / (ih * sc)) * 100, maskB = s >= 1 ? 'none' : xicara ? `radial-gradient(ellipse ${(e * wid * 0.7 + 1).toFixed(1)}px ${(e * hh * 0.62 + 1).toFixed(1)}px at ${(mid - ox).toFixed(1)}px ${(topY + hh * 0.2 - oyM).toFixed(1)}px,#000 86%,transparent 100%)` : `linear-gradient(180deg,transparent ${(lv - 0.5).toFixed(2)}%,#000 ${(lv + 0.5).toFixed(2)}%)`;
         frame.style.opacity = s > 0 ? 1 : 0; frame.style.webkitMaskImage = maskB; frame.style.maskImage = maskB; l.im.style.visibility = 'hidden';
         return;
       }
@@ -242,44 +246,37 @@
         /* o frasco entra, vira, passa sobre o prato soltando o molho e sai; a foto com molho aparece atrás do bico */
         /* o molho sai em cima da última peça que caiu, nunca fora da comida */
         let ultima = l.box; for (let q = i - 1; q >= 0 && !ultima; q--) ultima = layers[q].box;
-        const b0 = ultima || { x: 0.5, y: 0.33, w: 0.3, h: 0.1 }, wB = Math.max(b0.w, 0.12), b = { x: b0.x + b0.w / 2 - wB / 2, y: b0.y, w: wB, h: b0.h }, left = ox + b.x * iw * sc, wid = b.w * iw * sc, topY = oy + b.y * ih * sc, hh = b.h * ih * sc;
+        const b0 = ultima || { x: 0.5, y: 0.33, w: 0.3, h: 0.1 }, wB = Math.max(b0.w, 0.12), b = { x: b0.x + b0.w / 2 - wB / 2, y: b0.y, w: wB, h: b0.h }, left = ox + b.x * iw * sc, wid = b.w * iw * sc, topY = oyM + b.y * ih * sc, hh = b.h * ih * sc;
         const a = clamp(local / 0.22), s = clamp((local - 0.2) / 0.6), o = clamp((local - 0.82) / 0.18), zig = Math.sin(s * Math.PI * 5), inA = 1 - Math.pow(1 - a, 3);
-        const spray = l.pour === 'spraychantilly', bordaCopo = spray && layers[0] && layers[0].box ? oy + layers[0].box.y * ih * sc : null /* chantilly: o jato termina na borda da taça, onde o creme fica, e não dentro do shake */, tipX = left + wid * (0.06 + 0.88 * s), targetY = bordaCopo !== null ? bordaCopo + hh * 0.01 * zig : topY + hh * (0.3 + zig * 0.14), tipY = spray ? Math.max(targetY - Math.max(46, Hw * 0.085), Hw * 0.11) : targetY - Math.max(46, Hw * 0.085), bh2 = l.pour === 'requeijao' ? Hw * 0.56 : Math.max(wid * 1.15, Hw * 0.42), bw2 = bh2 * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 3)), off = tipY + 40;
+        const spray = l.pour === 'spraychantilly', bordaCopo = spray && layers[0] && layers[0].box ? oyM + layers[0].box.y * ih * sc : null /* chantilly: o jato termina na borda da taça, onde o creme fica, e não dentro do shake */, tipX = left + wid * (0.06 + 0.88 * s), targetY = bordaCopo !== null ? bordaCopo + hh * 0.01 * zig : topY + hh * (0.3 + zig * 0.14), tipY = spray ? Math.max(targetY - Math.max(46, Hw * 0.085), Hw * 0.11) : targetY - Math.max(46, Hw * 0.085), bh2 = l.pour === 'requeijao' ? Hw * 0.56 : Math.max(wid * 1.15, Hw * 0.42), bw2 = bh2 * ((l.bottle.naturalWidth || 1) / (l.bottle.naturalHeight || 3)), off = tipY + 40;
         const angle = (spray ? 270 - inA * 12 : 268 - inA * 33) + zig * (spray ? 1.5 : 3) + o * 25, by = tipY - (1 - inA) * off - o * o * off; /* inclinado, com o corpo do frasco para cima e para a direita */
         const hidden = local <= 0 || local >= 1;
         l.bottle.style.visibility = hidden ? 'hidden' : 'visible'; l.bottle.style.height = bh2 + 'px'; l.bottle.style.left = tipX - bw2 / 2 + 'px'; l.bottle.style.top = by + 'px'; l.bottle.style.transform = `rotate(${angle}deg)`;
         const flowing = s > 0 && s < 1 && o === 0; l.stream.style.visibility = flowing ? 'visible' : 'hidden';
         if (flowing) { l.stream.style.left = tipX - Math.max(2, wid * 0.008) + 'px'; l.stream.style.top = tipY + 'px'; l.stream.style.width = Math.max(4, wid * 0.016) + 'px'; l.stream.style.height = Math.max(0, targetY - tipY) + 'px'; }
         /* o molho só aparece na faixa da comida: a luz e a fumaça das duas fotos são diferentes e, se a foto abrisse na tela inteira, formariam uma linha clara seguindo o frasco. No fim a faixa abre, sem degrau */
-        const pct = ((tipX - ox) / (iw * sc)) * 100, abre = clamp((s - 0.82) / 0.18), yA = ((topY - oy) / (ih * sc)) * 100, yB = ((topY + hh - oy) / (ih * sc)) * 100, folgaY = 5 + abre * 110, maskH = `linear-gradient(90deg,#000 ${(pct - 4).toFixed(2)}%,transparent ${(pct + 1 + abre * 120).toFixed(2)}%)`, maskV = `linear-gradient(180deg,transparent ${(yA - folgaY - 5).toFixed(2)}%,#000 ${(yA - folgaY).toFixed(2)}%,#000 ${(yB + folgaY).toFixed(2)}%,transparent ${(yB + folgaY + 5).toFixed(2)}%)`, maskP = s >= 1 ? 'none' : `${maskH},${maskV}`;
+        const pct = ((tipX - ox) / (iw * sc)) * 100, abre = clamp((s - 0.82) / 0.18), yA = ((topY - oyM) / (ih * sc)) * 100, yB = ((topY + hh - oyM) / (ih * sc)) * 100, folgaY = 5 + abre * 110, maskH = `linear-gradient(90deg,#000 ${(pct - 4).toFixed(2)}%,transparent ${(pct + 1 + abre * 120).toFixed(2)}%)`, maskV = `linear-gradient(180deg,transparent ${(yA - folgaY - 5).toFixed(2)}%,#000 ${(yA - folgaY).toFixed(2)}%,#000 ${(yB + folgaY).toFixed(2)}%,transparent ${(yB + folgaY + 5).toFixed(2)}%)`, maskP = s >= 1 ? 'none' : `${maskH},${maskV}`;
         frame.style.opacity = s > 0 ? 1 : 0; frame.style.webkitMaskImage = maskP; frame.style.maskImage = maskP; frame.style.webkitMaskComposite = 'source-in'; frame.style.maskComposite = 'intersect'; l.im.style.visibility = 'hidden';
         return;
       }
       if (l.fill && frame) {
         /* copo: o nível sobe. Tigela e xícara: o líquido se espalha a partir de onde o jato cai */
-        const c0 = (layers[0] && layers[0].box) || (layers[i - 1] && layers[i - 1].box) || { x: 0.56, y: 0.3, w: 0.2, h: 0.42 } /* sempre o copo, mesmo com gelo ou limão já dentro */, left = ox + c0.x * iw * sc, wid = c0.w * iw * sc, topY = oy + c0.y * ih * sc, hh = c0.h * ih * sc, mid = left + wid / 2, bottom = topY + hh, wide = wid / hh > 1.2;
+        const c0 = (layers[0] && layers[0].box) || (layers[i - 1] && layers[i - 1].box) || { x: 0.56, y: 0.3, w: 0.2, h: 0.42 } /* sempre o copo, mesmo com gelo ou limão já dentro */, left = ox + c0.x * iw * sc, wid = c0.w * iw * sc, topY = oyM + c0.y * ih * sc, hh = c0.h * ih * sc, mid = left + wid / 2, bottom = topY + hh, wide = wid / hh > 1.2;
         const s = clamp((local - 0.06) / 0.72), e = s * s * (3 - 2 * s), done = local >= 0.86, head = clamp(local / 0.08), tail = clamp((local - 0.78) / 0.08);
         /* xícara e tigela: o jato termina na boca, dentro do recipiente, e não na frente dele */
         const land = wide ? topY + hh * 0.15 : bottom - hh * 0.06 - e * hh * 0.8, sw = Math.min(16, Math.max(5, wid * (wide ? 0.04 : 0.08)));
         const flowing = local > 0 && tail < 1; l.stream.style.visibility = flowing ? 'visible' : 'hidden';
         if (flowing) { const y0 = tail * land, y1 = head * land; l.stream.style.left = mid - sw / 2 + 'px'; l.stream.style.top = y0 + 'px'; l.stream.style.width = sw + 'px'; l.stream.style.height = Math.max(0, y1 - y0) + 'px'; }
         let maskF = 'none';
-        if (!done) { if (wide) { const cy = topY + hh * 0.2 - oy, cxx = mid - ox; maskF = `radial-gradient(ellipse ${(e * wid * 0.7 + 1).toFixed(1)}px ${(e * hh * 0.62 + 1).toFixed(1)}px at ${cxx.toFixed(1)}px ${cy.toFixed(1)}px,#000 86%,transparent 100%)`; } else { const lv = ((bottom - e * hh * 1.04 - oy) / (ih * sc)) * 100; maskF = `linear-gradient(180deg,transparent ${(lv - 0.5).toFixed(2)}%,#000 ${(lv + 0.5).toFixed(2)}%)`; } }
+        if (!done) { if (wide) { const cy = topY + hh * 0.2 - oyM, cxx = mid - ox; maskF = `radial-gradient(ellipse ${(e * wid * 0.7 + 1).toFixed(1)}px ${(e * hh * 0.62 + 1).toFixed(1)}px at ${cxx.toFixed(1)}px ${cy.toFixed(1)}px,#000 86%,transparent 100%)`; } else { const lv = ((bottom - e * hh * 1.04 - oyM) / (ih * sc)) * 100; maskF = `linear-gradient(180deg,transparent ${(lv - 0.5).toFixed(2)}%,#000 ${(lv + 0.5).toFixed(2)}%)`; } }
         frame.style.opacity = local > 0.04 ? 1 : 0; frame.style.webkitMaskImage = maskF; frame.style.maskImage = maskF; l.im.style.visibility = 'hidden';
         return;
       }
       if (frame && !l.box) { frame.style.opacity = local; l.im.style.visibility = 'hidden'; return; } /* etapa sem queda: a foto se transforma */
-      if (l.box && frame && /^gelo/.test((SHOWS[cur].stepKeys || [])[i] || '') && ['drinks', 'bebidas', 'sucos'].includes(SHOWS[cur].type) && /picado|^gelo$/.test((SHOWS[cur].stepKeys || [])[i]) && l.box.h > 0.12) {
-        /* monte de gelo: em vez de um bloco enorme caindo, o gelo vai enchendo o copo de baixo para cima */
-        const e = clamp(local / 0.8), sm = e * e * (3 - 2 * e), fundo = l.box.y + l.box.h, lv = (fundo - sm * l.box.h * 1.04) * 100;
-        const mk = local >= 0.8 ? 'none' : `linear-gradient(180deg,transparent ${(lv - 1.2).toFixed(2)}%,#000 ${(lv + 1.2).toFixed(2)}%)`;
-        frame.style.opacity = local > 0 ? 1 : 0; frame.style.webkitMaskImage = mk; frame.style.maskImage = mk; l.im.style.visibility = 'hidden';
-        return;
-      }
       if (l.box) {
         /* a peça saiu da foto real: cai até o ponto exato em que está nessa foto */
-        const pw = l.box.w * iw * sc, ph = l.box.h * ih * sc, px = ox + l.box.x * iw * sc - cx, py = oy + l.box.y * ih * sc - baseY;
-        const fd = clamp(local / 0.66), drop = (1 - fd * fd) * (oy + l.box.y * ih * sc + ph + 40), land = clamp((local - 0.66) / 0.12);
+        const pw = l.box.w * iw * sc, ph = l.box.h * ih * sc, px = ox + l.box.x * iw * sc - cx, py = oyM + l.box.y * ih * sc - baseY;
+        const fd = clamp(local / 0.66), drop = (1 - fd * fd) * (oyM + l.box.y * ih * sc + ph + 40), land = clamp((local - 0.66) / 0.12);
         frame.style.opacity = land;
         if (local <= 0 || land >= 1) l.im.style.visibility = 'hidden';
         else { l.im.style.visibility = 'visible'; l.im.style.width = pw + 'px'; l.im.style.height = ph + 'px'; l.im.style.opacity = 1 - land; l.im.style.filter = fd < 1 ? `blur(${((1 - fd) * fd * 8).toFixed(1)}px)` : 'none'; l.im.style.transform = `translate3d(${px}px,${py - drop}px,0)`; }
@@ -594,7 +591,7 @@
   if ('scrollRestoration' in history) history.scrollRestoration = voltaAuto ? 'auto' : 'manual';
   if (!voltaAuto) { if (location.hash) history.replaceState(null, '', location.pathname + location.search); rolarPara(0, 0); }
   /* logo: fecha o que estiver aberto e volta ao topo da página principal */
-  $('.logo').addEventListener('click', (e) => { e.preventDefault(); closeNow(); menuSec.hidden = true; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; document.documentElement.classList.remove('com-categoria', 'montando'); try { sessionStorage.removeItem('sm_cat'); } catch (er) { /* sem armazenamento */ } rolarPara({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
+  $('.logo').addEventListener('click', (e) => { e.preventDefault(); closeNow(); menuSec.hidden = true; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; document.documentElement.classList.remove('com-categoria', 'montando'); try { sessionStorage.removeItem('sm_cat'); } catch (er) { /* sem armazenamento */ } if (cur !== 0) switchShow(0); /* página principal: o hambúrguer montando desde o começo */ else { p = 0; rolarPara({ top: 0, behavior: 'instant' }); } });
   try { const salva = sessionStorage.getItem('sm_cat'); if (salva && TYPES.some((t) => t.id === salva)) setTimeout(() => openCat(salva, false), 0); } catch (e) { /* sem armazenamento */ }
   if (!reduce) { const io = new IntersectionObserver((es) => { if (!es[0].isIntersecting) return; io.disconnect(); gsap.from($$('.cat', catsEl), { y: 30, opacity: 0, scale: 0.97, duration: 0.65, stagger: 0.025, ease: 'power3.out', clearProps: 'transform,opacity' }); }, { threshold: 0.08 }); io.observe(catsEl); }
 

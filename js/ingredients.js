@@ -4,7 +4,7 @@
 (function () {
   const S = window.SM;
   /* versão das fotos: muda quando alguma foto é refeita, e o navegador baixa a nova em vez de usar a guardada */
-  const VER = (S.VER = '20261117c');
+  const VER = (S.VER = '20261117e');
   const ING = (S.ING = {
     'bun-bottom': { ar: 1000 / 574, w: 1, t: 0.17, kick: 'A base', t1: 'O pão', t2: 'tostado', text: 'Brioche cortado ao meio e dourado na manteiga, com o lado crocante para cima.', fx: 'steam' },
     lettuce: { ar: 1000 / 543, w: 1.1, t: 0.08, dy: 0.02, kick: 'Alface', t1: 'A alface', t2: 'cai', text: 'Folha fresca e bem crespa, que segura o calor da carne longe do pão.', fx: 'drops' },
@@ -73,7 +73,10 @@
     const t = S.TYPES.find((x) => x.id === b.type), item = t && t.items.find((i) => i[0] === b.name); if (!item) return;
     const id = `${b.type}-${slug(b.name)}`, n = b.steps.length, page = t.c[0], light = dark(page);
     /* todo passo, inclusive o último (tampa, orégano, fatia de limão), diz o que está entrando; o nome do prato fica para o fim (done) */
-    const steps = b.steps.map((k, i) => { const words = ['Agora:', ROTULO[`${b.type}:${k}`] || ROTULO[k] || k], cut = balanceCut(words); return { frame: b.frames[i], kick: `Passo ${i + 1} de ${n}`, t1: words.slice(0, cut).join(' '), t2: words.slice(cut).join(' '), text: 'Feito na hora, camada por camada.', stat: [i + 1, `de ${n}`], fx: 'steam' }; });
+    /* título = só o ingrediente; a frase muda de passo para passo, para a montagem não soar repetida */
+    const FRASES = ['Tudo começa aqui, limpo e pronto.', 'Primeira camada, feita na hora.', 'Entra mais uma camada.', 'Cada coisa no seu lugar.', 'Vai ganhando forma.', 'Quase pronto.', 'O toque final.'];
+    const frase = (i) => (i === 0 ? FRASES[0] : i === n - 1 ? FRASES[6] : i === n - 2 && n > 3 ? FRASES[5] : FRASES[1 + ((i - 1) % 4)]);
+    const steps = b.steps.map((k, i) => { const nome = ROTULO[`${b.type}:${k}`] || ROTULO[k] || k, words = (nome.charAt(0).toUpperCase() + nome.slice(1)).split(' '), cut = words.length > 1 ? balanceCut(words) : 1; return { frame: b.frames[i], kick: `Passo ${i + 1} de ${n}`, t1: words.slice(0, cut).join(' '), t2: words.slice(cut).join(' '), text: frase(i), stat: [i + 1, `de ${n}`], fx: 'steam' }; });
     const nome = b.name.split(' '), corte = balanceCut(nome), done = { kick: 'Pronto', t1: nome.slice(0, corte).join(' '), t2: nome.slice(corte).join(' '), text: item[1], stat: [n, `de ${n}`], fx: 'steam' };
     item[3] = id;
     S.SHOWS.push({ id, type: b.type, name: b.name, price: item[2], colors: { page, ink: light ? '#FFF4DC' : '#1F1004', soft: light ? 'rgba(255,244,220,.84)' : 'rgba(31,16,4,.74)', accent: light ? '#FFC93C' : '#C8321E' }, recipe: b.frames, thumb: b.frames[n - 1], heroUrl: `assets/frames/${b.frames[n - 1]}.jpg?v=${VER}`, frames: b.frames, pours: b.pours, fills: b.fills, stepKeys: b.steps, steps, done });

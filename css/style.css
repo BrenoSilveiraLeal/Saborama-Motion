@@ -59,7 +59,7 @@ a{color:inherit}button{font:inherit;color:inherit;background:none;border:0;curso
 .b-grater img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;max-width:none}.b-grater .g-queijo{transform-origin:70% 34%;will-change:transform}.b-grater .g-fios{transform-origin:50% 74%;will-change:transform;-webkit-mask-image:linear-gradient(#000 84%,transparent 99%);mask-image:linear-gradient(#000 84%,transparent 99%)}
 .b-shred{position:absolute;left:0;top:0;z-index:4;width:15px;height:3.5px;border-radius:2px;background:linear-gradient(90deg,#FFF6D8,#F2DEA0);box-shadow:0 1px 2px rgba(0,0,0,.35);opacity:0;pointer-events:none;will-change:transform}
 .b-fade{display:none;position:absolute;left:0;right:0;z-index:4;pointer-events:none;background:linear-gradient(#0b0705,transparent)}
-.top .order-btn{background:rgba(10,6,3,.62)}
+.top .order-btn{background:rgba(10,6,3,.62)}.top.on-cream .order-btn,.top.in-list .order-btn{background:rgba(255,255,255,.92);color:var(--cr-ink);box-shadow:inset 0 0 0 1.5px rgba(31,16,4,.18),0 4px 14px -6px rgba(31,16,4,.25)}
 .b-bottle{position:absolute;z-index:5;max-width:none;width:auto;visibility:hidden;transform-origin:50% 0;filter:drop-shadow(0 14px 22px rgba(0,0,0,.55));will-change:transform}
 html.com-categoria #categorias{display:none}html.montando #cena~*,html.montando .foot{display:none!important}html.montando #live{position:fixed!important}
 .b-fizz{position:absolute;left:0;top:0;width:100%;height:100%;z-index:4;pointer-events:none}
