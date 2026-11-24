@@ -20,10 +20,14 @@
 
   /* ---------- catálogo ---------- */
   const DISHES = [];
-  TYPES.forEach((t) => t.items.forEach(([name, desc, price, show]) => DISHES.push({ id: t.id + '-' + name, type: t, name, desc, price, show })));
+  TYPES.forEach((t) => t.items.forEach(([name, desc, price, show, badge]) => DISHES.push({ id: t.id + '-' + name, type: t, name, desc, price, show, badge })));
   const showById = (id) => SHOWS.find((s) => s.id === id);
-  $('#totalLine').textContent = `${TYPES.length} tipos · ${DISHES.length} sabores`;
-  $('#band').innerHTML = [...TYPES, ...TYPES, ...TYPES].map((t) => `<span>${esc(t.name)}</span><i>●</i>`).join('');
+  /* faixa: duas linhas que andam em sentidos opostos, uma com o jeito da comida e outra com as categorias */
+  const JEITOS = ['Suculento', 'Tostado', 'Na chapa', 'Derretido', 'Crocante', 'Defumado', 'Fresquinho', 'Caseiro', 'Dourado', 'Cremoso', 'Picante', 'Na hora'];
+  $('#band').innerHTML = [...JEITOS, ...JEITOS, ...JEITOS].map((t, i) => `<span class="c${i % 4}">${t}</span>`).join('');
+  $('#band2').innerHTML = [...TYPES, ...TYPES, ...TYPES].map((t) => `<span>${esc(t.name)}</span><i>✦</i>`).join('');
+  /* a cozinha (montagem guiada pela rolagem) só entra na página quando a pessoa escolhe um prato */
+  const raiz0 = document.documentElement, cozOn = () => raiz0.classList.contains('cozinha');
 
   /* ---------- cozinha ---------- */
   let cur = 0, target = 0, p = 0, stepNow = -1, busy = false, shotEls = [], fxKind = 'smoke';
@@ -377,23 +381,29 @@
   };
   /* recomeça o prato com a cena limpa: a comida nunca aparece se desmontando */
   const voltarAoInicio = () => { p = 0; rolarPara({ top: sectionRange().top, behavior: 'instant' }); };
-  const switchShow = (i, { scroll = true } = {}) => {
-    if (busy) return; if (i === cur) { if (scroll) voltarAoInicio(); return; }
-    busy = true; const nx = SHOWS[i], c = nx.colors;
-    const apply = () => { cur = i; p = 0; if (scroll) rolarPara(0, sectionRange().top); buildShots(nx); setVars(c); refreshPick(); setIsland(DISHES.find((d) => d.show === nx.id)); renderScene(); };
-    if (reduce) { apply(); busy = false; return; }
-    wave.style.background = c.page; wave.style.visibility = 'visible'; wv.on = true; wv.level = -0.12; wv.amp = 0;
+  /* transição em onda: o líquido escuro sobe cobrindo a tela com o nome do destino, a troca acontece por baixo dele e a onda segue para cima */
+  const ondaPara = (rotulo, titulo, cor, aoMeio) => {
+    if (busy) return false; busy = true;
+    if (reduce) { aoMeio(); busy = false; return true; }
+    wave.style.background = '#140C07'; wave.style.visibility = 'visible'; wv.on = true; wv.level = -0.12; wv.amp = 0;
+    const wt = $('.wave-t', wave); wt.innerHTML = `<small>${esc(rotulo)}</small>${esc(titulo)}`; wt.style.color = cor; gsap.fromTo(wt, { y: 120, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, delay: 0.45, ease: 'power3.out' });
     wb.splice(0).forEach((b) => b.remove());
     for (let k = 0; k < 26; k++) { const b = document.createElement('i'), s = 4 + Math.random() * 14; b.style.cssText = `position:absolute;left:${Math.random() * 100}%;bottom:-20px;width:${s}px;height:${s}px;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.85),rgba(255,255,255,.08) 65%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)`; wave.appendChild(b); wb.push(b); gsap.to(b, { y: -IH() - 60, x: (Math.random() - 0.5) * 80, duration: 0.9 + Math.random() * 0.8, delay: Math.random() * 0.6, ease: 'power1.in' }); }
     gsap.timeline({ onComplete() { wave.style.visibility = 'hidden'; wave.style.clipPath = ''; wave.style.opacity = ''; wv.on = false; busy = false; } })
       .to(wv, { level: 1.14, duration: 1.3, ease: 'power2.inOut' }, 0).to(wv, { amp: 5, duration: 0.45, ease: 'power2.out' }, 0).to(wv, { amp: 0, duration: 0.45, ease: 'power2.in' }, 0.85)
-      .call(apply, null, 1.3).to(wave, { opacity: 0, duration: 0.45 }, 1.32);
+      .call(aoMeio, null, 1.3).to(wave, { opacity: 0, duration: 0.45 }, 1.32);
+    return true;
+  };
+  const switchShow = (i, { scroll = true } = {}) => {
+    if (busy) return; if (i === cur && cozOn()) { if (scroll) voltarAoInicio(); return; }
+    const nx = SHOWS[i], c = nx.colors;
+    ondaPara('Montando agora', nx.name, c.page, () => { raiz0.classList.add('cozinha'); cur = i; p = 0; if (scroll) rolarPara(0, sectionRange().top); buildShots(nx); setVars(c); refreshPick(); setIsland(DISHES.find((d) => d.show === nx.id)); renderScene(); });
   };
 
   /* ---------- bolhas ---------- */
   /* bolhas escolhem o tipo; os sabores daquele tipo ficam no cartão */
-  const BUB_TYPES = ['burger', 'pizza', 'fritas'];
-  const typeGroups = BUB_TYPES.map((id) => TYPES.find((t) => t.id === id)).filter((t) => t && SHOWS.some((s) => s.type === t.id)).map((t) => ({ t, first: SHOWS.findIndex((s) => s.type === t.id) }));
+  const BUB_TYPES = ['lanches', 'entradas', 'pizzas'];
+  const typeGroups = BUB_TYPES.map((id) => TYPES.find((t) => t.id === id)).filter(Boolean).map((t) => ({ t, first: SHOWS.findIndex((s) => t.items.some((it) => it[3] === s.id)) })).filter((g) => g.first >= 0);
   $('#bubbles').innerHTML = typeGroups.map(({ t, first }) => { const s = SHOWS[first]; return `<button class="bub" type="button" role="radio" data-i="${first}" data-type="${t.id}" aria-checked="false" aria-label="${esc(t.name)}" style="--c:${s.colors.page}"><span class="bub-g"><span class="bub-i"><img src="${showThumb(s)}" alt=""></span></span><b>${esc(t.name)}</b></button>`; }).join('');
   /* setas e roda do mouse percorrem as categorias */
   const bubsBox = $('#bubbles'), pickBox = bubsBox.parentElement;
@@ -430,175 +440,139 @@
     b.addEventListener('keydown', (e) => { const all = $$('.bub'), k = all.indexOf(b), n = all.length; let to = null; if (['ArrowDown', 'ArrowRight'].includes(e.key)) to = (k + 1) % n; if (['ArrowUp', 'ArrowLeft'].includes(e.key)) to = (k - 1 + n) % n; if (to !== null) { e.preventDefault(); all[to].focus(); all[to].click(); } });
   });
 
-  /* ---------- cardápio: grade que expande ---------- */
-  const bento = $('#bento'); let filter = 'burger', query = '', list = [], tiles = [], open = -1, caseBusy = false, touched = false, inView = false, autoT = 0, cyc = 0;
-  /* a altura da linha acompanha a largura: o bloco largo sempre mostra a comida e a mesa, sem cortar */
-  const medirBlocos = () => { const cs = getComputedStyle(bento), cols = cs.gridTemplateColumns.split(' ').length, gap = parseFloat(cs.columnGap) || 0; if (bento.clientWidth) bento.style.setProperty('--row', `${(((bento.clientWidth - gap * (cols - 1)) / cols) * 2 + gap) / 2.2}px`); montarGrade(cols); enquadrarEm(bento); };
-  /* tamanho de cada bloco: segue um padrão de 8, e os últimos blocos se ajustam para fechar a linha, sem buraco no fim da grade */
-  const montarGrade = (cols) => {
-    const n = tiles.length, destaque = bento.classList.contains('featured'), sp = [];
-    if (!n) return;
-    if (cols >= 4) {
-      const G = ['big', '', 'tall', '', 'wide', 'wide', 'wide', 'wide'], FIM = { 0: [], 1: ['full'], 2: ['wide', 'wide'], 3: ['wide', '', ''] };
-      if (destaque) { const cheios = Math.floor(n / 8) * 8; for (let i = 0; i < cheios; i++) sp.push(G[i % 8]); let r = n - cheios; if (r >= 4) { sp.push('big', '', 'tall', ''); r -= 4; } sp.push(...FIM[r]); }
-      else { const r = n % 4; for (let i = 0; i < n - r; i++) sp.push(''); sp.push(...FIM[r]); }
-    } else {
-      const G = ['big', '', '', 'wide', '', '', 'wide', 'wide'];
-      for (let i = 0; i < n; i++) sp.push(destaque ? G[i % 8] : '');
-      /* em duas colunas, se sobrar meia linha, o último bloco ocupa a linha inteira */
-      const celulas = sp.reduce((s, k) => s + (k === 'big' ? 4 : k === 'wide' ? 2 : 1), 0);
-      if (celulas % 2 && sp[n - 1] === '') sp[n - 1] = 'wide';
-    }
-    tiles.forEach((t, i) => { t.classList.remove('t-big', 't-tall', 't-wide', 't-full'); if (sp[i]) t.classList.add('t-' + sp[i]); });
-  };
-  new ResizeObserver(medirBlocos).observe(bento);
-  const chipsEl = $('#chips');
-  /* caixa da comida na foto final: união das peças que caem (molhos e líquidos ficam de fora, a área deles pode pegar fumaça) */
-  const caixaPrato = (s) => { const medida = (window.SM_DISH || {})[(s.frames || [])[(s.frames || []).length - 1]]; if (medida) return medida.join(','); /* medida na foto final (dish-boxes.js); sem ela, a união das peças */ let x0 = 1, y0 = 1, x1 = 0, y1 = 0; (s.frames || []).forEach((f, i) => { const b = window.SM.PIECES[f]; if (!b || (s.pours && s.pours[i])) return; x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h); }); return x1 > x0 ? [x0, y0, x1 - x0, y1 - y0].map((v) => v.toFixed(4)).join(',') : ''; };
-  /* enquadra a foto no bloco: a comida inteira aparece, centralizada e grande, em qualquer formato (alto, largo, quadrado), sem cortar copo nem pizza */
+  /* ---------- cardápio: uma seção colorida por tipo, com abas, no ritmo da rolagem ---------- */
+  let open = -1; /* sem prato aberto em painel: a variável segue para a ilha e para a montagem */
+  const menuEl = $('#menu'), dotsEl = $('#mdots');
+  /* caixa da comida na foto final: medida em dish-boxes.js; sem ela, a união das peças que caem */
+  const caixaPrato = (s) => { const medida = (window.SM_DISH || {})[(s.frames || [])[(s.frames || []).length - 1]]; if (medida) return medida.join(','); let x0 = 1, y0 = 1, x1 = 0, y1 = 0; (s.frames || []).forEach((f, i) => { const b = window.SM.PIECES[f]; if (!b || (s.pours && s.pours[i])) return; x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h); }); return x1 > x0 ? [x0, y0, x1 - x0, y1 - y0].map((v) => v.toFixed(4)).join(',') : ''; };
+  /* enquadra a foto: a comida inteira aparece, centralizada e grande, sem cortar copo nem pizza */
   const enquadrar = (img) => {
     const d = img.dataset.d, box = img.parentElement; if (!d || !img.naturalWidth || !box) return;
     const tw = box.clientWidth, th = box.clientHeight; if (!tw || !th) return;
     const [x, y, w, h] = d.split(',').map(Number), iw = img.naturalWidth, ih = img.naturalHeight, cobre = Math.max(tw / iw, th / ih);
-    const z = clamp(Math.min((0.8 * tw) / (w * iw * cobre), (0.72 * th) / (h * ih * cobre)), 1, 1.9);
-    /* comida larga em bloco estreito (pizza em bloco alto): a foto encolhe até a comida caber na largura, e o alto e o pé da foto se dissolvem no fundo escuro */
-    let S = cobre * z; if (w * iw * S > 0.96 * tw) S = Math.max(box.classList.contains('cat') || box.classList.contains('cat-fly') ? cobre /* card de categoria: a foto sempre preenche o card com o ambiente real */ : tw / iw, (0.94 * tw) / (w * iw));
-    const W = iw * S, H = ih * S, sobra = H < th - 1;
-    const left = clamp(tw / 2 - (x + w / 2) * W, tw - W, 0), top = sobra ? clamp(th * 0.5 - (y + h / 2) * H, 0, th - H) : clamp(th * 0.46 - (y + h / 2) * H, th - H, 0);
-    img.classList.add('enq'); img.style.width = W + 'px'; img.style.height = H + 'px'; img.style.left = left + 'px'; img.style.top = top + 'px';
-    const mk = sobra ? 'linear-gradient(transparent,#000 14%,#000 86%,transparent)' : ''; img.style.webkitMaskImage = mk; img.style.maskImage = mk;
-    /* sobra espaço acima e abaixo: o próprio ambiente da foto (mesa, luz, fumaça), desfocado, preenche o bloco em vez de um fundo escuro */
-    box.classList.toggle('amb', sobra); if (sobra) box.style.setProperty('--amb', `url("${img.currentSrc || img.src}")`);
+    const z = clamp(Math.min((0.74 * tw) / (w * iw * cobre), (0.7 * th) / (h * ih * cobre)), 1, 2.2);
+    let S = cobre * z; if (w * iw * S > 0.94 * tw) S = Math.max(cobre, (0.92 * tw) / (w * iw));
+    const W = iw * S, H = ih * S;
+    img.style.width = W + 'px'; img.style.height = H + 'px';
+    img.style.left = clamp(tw / 2 - (x + w / 2) * W, tw - W, 0) + 'px'; img.style.top = clamp(th * 0.5 - (y + h / 2) * H, th - H, 0) + 'px';
   };
   const enquadrarEm = (raiz) => $$('img.art[data-d]', raiz).forEach(enquadrar);
   document.addEventListener('load', (e) => { if (e.target.matches && e.target.matches('img.art[data-d]')) enquadrar(e.target); }, true);
-  const artHtml = (d) => {
-    const s = d.show && showById(d.show);
-    if (s) return `<img class="art" src="${showThumb(s)}" data-d="${caixaPrato(s)}" alt="" loading="lazy">`;
-    const hue = ((d.type.items.findIndex((x) => x[0] === d.name) % 4) - 1.5) * 9;
-    return `<span class="art typ" style="filter:hue-rotate(${hue}deg);background:radial-gradient(90% 90% at 75% 15%,${d.type.c[0]},${d.type.c[1]})"><u>${esc(d.name)}</u><s></s><q></q></span>`;
-  };
-  const renderChips = () => { chipsEl.innerHTML = TYPES.map((t) => `<button class="chip" type="button" data-id="${t.id}" style="--c:${t.c[0]}" aria-pressed="${filter === t.id && !query}">${esc(t.name)}</button>`).join(''); $$('.chip', chipsEl).forEach((c) => c.addEventListener('click', () => { touched = true; stopAuto(); filter = c.dataset.id; query = ''; $('#q').value = ''; closeNow(); renderChips(); renderBento(); setIsland(list[0]); c.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); })); };
-  const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  /* filtros: doce, salgado, vegetariano e vegano (a lista está em tags.js) */
-  const FILTROS = [['doce', 'Doce'], ['salgado', 'Salgado'], ['vegetariano', 'Vegetariano'], ['vegano', 'Vegano']];
-  let tagAtiva = '', buscaGeral = false;
-  const temTag = (d, k) => { const T = window.SM_TAGS, id = d.type.id, p = T.pratos[id] || {}, tem = (n) => (p[n] || []).includes(d.name); if (T.semTipo.includes(id)) return false; const doce = T.sempreDoce.includes(id) || tem('doce'); if (k === 'doce') return doce; if (k === 'salgado') return !doce; return tem(k); };
-  const closeNow = () => { open = -1; caseBusy = false; bento.classList.remove('is-open', 'is-panel'); };
-  const renderBento = () => {
-    const q = norm(query), base = buscaGeral ? DISHES : DISHES.filter((d) => d.type.id === filter);
-    /* cada botão só aparece onde faz sentido: precisa ter prato com ele e prato sem ele */
-    const disponiveis = FILTROS.filter(([k]) => { const n = base.filter((d) => temTag(d, k)).length; return n > 0 && n < base.length; });
-    if (!disponiveis.some(([k]) => k === tagAtiva)) tagAtiva = '';
-    $('#filtros').innerHTML = disponiveis.map(([k, rotulo]) => `<button class="chip" type="button" data-tag="${k}" aria-pressed="${k === tagAtiva}">${rotulo}</button>`).join('');
-    list = base.filter((d) => (!q || norm(d.name + ' ' + d.desc + ' ' + d.type.name).includes(q)) && (!tagAtiva || temTag(d, tagAtiva)));
-    const t = TYPES.find((x) => x.id === filter);
-    $('#q').placeholder = buscaGeral ? 'Buscar em todo o cardápio...' : `Buscar em ${t.name}...`;
-    $('#menuTitle').textContent = q || buscaGeral ? `${list.length} ${list.length === 1 ? 'resultado.' : 'resultados.'}` : `${t.name}.`;
-    $('#empty').hidden = list.length > 0;
-    bento.className = 'bento' + (!q && !buscaGeral && list.length >= 5 ? ' featured' : '') + (!q && !buscaGeral && list.length === 5 ? ' five' : '');
-    bento.innerHTML = list.map((d, i) => `<button class="tile" type="button" data-i="${i}" aria-label="${esc(d.name)}, R$ ${brl(d.price)}">${artHtml(d)}<span class="lab" style="--c:${d.type.c[0]}"><i></i><b>${esc(d.name)}</b><small>R$ ${brl(d.price)}</small></span></button>`).join('') +
-      `<div class="case" role="dialog" aria-modal="false" aria-label="Prato aberto"><div class="box"></div><button class="nb p-close" type="button" aria-label="Fechar o prato">✕</button><div class="panel"><div class="p-top"><span id="pNum"></span><span id="pCena"></span></div><h3 class="p-t" id="pT"></h3><p class="p-meta" id="pMeta"></p><p class="p-desc" id="pDesc"></p><div class="p-res" id="pRes"></div><div class="p-size" id="pSize" role="group" aria-label="Tamanho"></div><div class="p-acts"><button class="p-see" id="pSee" type="button" hidden>Ver o preparo</button><button class="p-add" id="pAdd" type="button"><span>Adicionar ao pedido</span><i aria-hidden="true">+</i></button><button class="nb" id="pPrev" type="button" aria-label="Prato anterior">${ARROWL}</button><button class="nb" id="pNext" type="button" aria-label="Próximo prato">${ARROW}</button></div></div></div>`;
-    tiles = $$('.tile', bento); open = -1; medirBlocos();
-    tiles.forEach((el, i) => el.addEventListener('click', () => { touched = true; stopAuto(); showCase(i, true); }));
-    $('.p-close', bento).addEventListener('click', () => { touched = true; stopAuto(); hideCase(true); }); $('.box', bento).addEventListener('click', () => { touched = true; stopAuto(); hideCase(true); });
-    $('#pNext').addEventListener('click', () => { touched = true; stopAuto(); goCase(1); }); $('#pPrev').addEventListener('click', () => { touched = true; stopAuto(); goCase(-1); });
-    $('#pAdd').addEventListener('click', () => addToOrder(list[open], SIZES[isSize][0], isPrice()));
-    $('#pSee').addEventListener('click', () => { const i = SHOWS.findIndex((s) => s.id === list[open].show); touched = true; stopAuto(); hideCase(false); if (i === cur) voltarAoInicio(); else switchShow(i); });
-    if (!reduce && tiles.length) gsap.fromTo(tiles, { y: 26, opacity: 0, scale: 0.97 }, { y: 0, opacity: 1, scale: 1, duration: 0.6, stagger: 0.05, ease: 'power3.out', clearProps: 'all' });
-  };
-  const box = () => $('.box', bento);
-  let caseTop = 0;
-  const rectOf = (el) => { const a = ret(bento), r = ret(el); return { left: r.left - a.left, top: r.top - a.top - caseTop, width: r.width, height: r.height }; };
-  /* o prato aberto nunca passa da altura da tela, para os botões ficarem à vista */
-  const caseH = () => Math.max(Math.min(bento.clientHeight, IH() - 96), 460);
-  const caseTarget = () => { const w = bento.clientWidth, h = caseH(); bento.style.setProperty('--ch', h + 'px'); return IW() <= 800 ? { left: 0, top: 0, width: w, height: h * 0.46 } /* no celular a foto ocupa quase metade, o painel fica embaixo */ : { left: 0, top: 0, width: w * 0.62 - 6, height: h }; };
-  const fillCase = (i) => {
-    const d = list[i]; box().innerHTML = artHtml(d); box().firstChild.classList.remove('x');
-    $('#pNum').innerHTML = `<b>${pad(i + 1)}</b> / ${pad(list.length)}`; $('#pCena').textContent = d.show ? 'PREPARO EM CENA' : 'PREPARO EM BREVE';
-    $('#pT').textContent = d.name; $('#pMeta').textContent = d.type.name; $('#pDesc').textContent = d.desc; $('#pSee').hidden = !d.show;
-    setIsland(d); paintRes();
-  };
-  const paintRes = () => { if (open < 0 || !$('#pRes')) return; const d = list[open]; $('#pRes').innerHTML = `<div><b>R$ ${brl(isPrice())}</b>${SIZES.length > 1 ? `tamanho ${SIZES[isSize][0]}` : 'preço'}</div><div><b>${d.type.min} min</b>preparo</div><div><b>R$ ${brl(isPrice() * 0.9)}</b>no Pix</div>`; };
-  /* a grade agora é longa: o prato abre na altura em que a pessoa está */
-  const placeCase = () => { const h = caseH(), a = ret(bento).top, ct = Math.round(clamp(78 - a, 0, Math.max(0, bento.clientHeight - h))); caseTop = ct; bento.style.setProperty('--ct', ct + 'px'); };
-  const showCase = (i, user) => { if (caseBusy || open >= 0) return; caseBusy = true; open = i; fillCase(i); placeCase(); gsap.set(box(), rectOf(tiles[i])); bento.classList.add('is-open'); if (user) { const vt = ret(bento).top + caseTop; if (Math.abs(vt - 78) > 4) rolarDe({ top: vt - 78, behavior: reduce ? 'auto' : 'smooth' }); } gsap.to(box(), { ...caseTarget(), duration: reduce ? 0 : 0.72, ease: 'power3.inOut', onUpdate() { enquadrarEm(box()); }, onComplete() { caseBusy = false; enquadrarEm(box()); if (user) $('.p-close', bento).focus({ preventScroll: true }); } }); gsap.delayedCall(reduce ? 0 : 0.42, () => open >= 0 && bento.classList.add('is-panel')); };
-  const hideCase = (user) => { if (caseBusy || open < 0) return; caseBusy = true; const i = open; bento.classList.remove('is-panel'); gsap.to(box(), { ...rectOf(tiles[i]), duration: reduce ? 0 : 0.62, ease: 'power3.inOut', onUpdate() { enquadrarEm(box()); }, onComplete() { bento.classList.remove('is-open'); open = -1; caseBusy = false; if (user) tiles[i].focus({ preventScroll: true }); } }); };
-  const goCase = (d) => { if (caseBusy || open < 0) return; caseBusy = true; open = (open + d + list.length) % list.length; bento.classList.remove('is-panel'); const nu = document.createElement('div'); nu.style.cssText = 'position:absolute;inset:0'; nu.innerHTML = artHtml(list[open]); gsap.set(nu, { clipPath: d > 0 ? 'inset(0% 0% 0% 100%)' : 'inset(0% 100% 0% 0%)' }); box().appendChild(nu); gsap.to(nu, { clipPath: 'inset(0% 0% 0% 0%)', duration: reduce ? 0 : 0.68, ease: 'power3.inOut', onComplete() { fillCase(open); bento.classList.add('is-panel'); caseBusy = false; } }); };
-  bento.addEventListener('keydown', (e) => { if (open < 0) return; touched = true; stopAuto(); if (e.key === 'Escape') { e.preventDefault(); hideCase(true); } else if (e.key === 'ArrowRight') { e.preventDefault(); goCase(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); goCase(-1); } });
-  addEventListener('resize', () => { if (open >= 0 && !caseBusy) { gsap.set(box(), caseTarget()); enquadrarEm(box()); } });
-  /* sem ninguém mexendo, um prato abre sozinho */
-  const stopAuto = () => clearTimeout(autoT);
-  const auto = () => { if (touched || !inView || reduce || !list.length) return; if (open < 0) { showCase(cyc % list.length); autoT = setTimeout(auto, 3000); } else if (cyc % 2 === 0) { goCase(1); cyc++; autoT = setTimeout(auto, 2800); } else { hideCase(); cyc++; autoT = setTimeout(auto, 3400); } };
-  new IntersectionObserver((es) => { inView = es[0].isIntersecting; stopAuto(); if (inView && !touched) autoT = setTimeout(auto, 1800); }, { threshold: 0.35 }).observe($('#cardapio'));
-  $('#q').addEventListener('input', (e) => { touched = true; stopAuto(); query = e.target.value; if (buscaGeral && !query.trim()) { $('#catBack').click(); return; } closeNow(); renderChips(); renderBento(); });
-  $('#filtros').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return; touched = true; stopAuto(); tagAtiva = b.dataset.tag === tagAtiva ? '' : b.dataset.tag; closeNow(); renderBento(); });
+  const fotoHtml = (d) => { const s = d.show && showById(d.show); return s ? `<img class="art" src="${showThumb(s)}" data-d="${caixaPrato(s)}" alt="${esc(d.name)}">` : ''; };
+  const ingredientesDe = (d) => d.desc.replace(/\.$/, '').split(/,\s*|\s+e\s+/).map((x) => x.trim()).filter(Boolean).join(' · ');
 
-  /* ---------- tela de categorias: cards de tamanhos diferentes ---------- */
-  const CAT_SIZE = { burger: 'l', pizza: 'l', tabuas: 'l', sushi: 'l', fritas: 'w', nuggets: 'w', churrasco: 'w', japonesa: 'w', brasileira: 'w', doces: 'w', shakes: 'w', bebidas: 'w', alacarte: 'w', mar: 'w', saladas: 'w', drinks: 'w', cafes: 'w', frituras: 't', acai: 't', italiana: 't' };
-  const CAT_ORDER = ['burger', 'pizza', 'fritas', 'frituras', 'nuggets', 'tabuas', 'churrasco', 'sushi', 'japonesa', 'alacarte', 'italiana', 'hotdog', 'brasileira', 'marmitas', 'mexicana', 'chinesa', 'saladas', 'sopas', 'padaria', 'kids', 'acai', 'doces', 'shakes', 'cafes', 'bebidas', 'sucos', 'drinks'];
-  const catsEl = $('#cats'), catTypes = [...CAT_ORDER.map((id) => TYPES.find((t) => t.id === id)), ...TYPES.filter((t) => !CAT_ORDER.includes(t.id))].filter(Boolean);
-  catsEl.innerHTML = catTypes.map((t) => {
-    const d = DISHES.find((x) => x.type.id === t.id && x.show && showById(x.show)), n = t.items.length, sz = CAT_SIZE[t.id] || 'n';
-    return `<button class="cat cat-${sz}${d ? ' has-img' : ''}" type="button" data-id="${t.id}" aria-label="${esc(t.name)}, ${n} sabores" style="--c:${t.c[0]};--d:${t.c[1]}">${d ? `<img class="art" src="${showThumb(showById(d.show))}" data-d="${caixaPrato(showById(d.show))}" alt="" loading="lazy">` : '<span class="cat-deco"><s></s><q></q></span>'}<span class="cat-go" aria-hidden="true">${ARROW}</span><span class="cat-lab"><b>${esc(t.name)}</b><small>${n} sabores · ${t.min} min</small></span></button>`;
-  }).join('');
-  new ResizeObserver(() => enquadrarEm(catsEl)).observe(catsEl);
-  $('#catsLine').textContent = `${TYPES.length} categorias · ${DISHES.length} sabores`;
-  /* os produtos só aparecem depois de escolher uma categoria */
-  const menuSec = $('#cardapio');
-  const openCat = (id, scroll) => {
-    /* com uma categoria aberta, abaixo da cena ficam só as comidas dela; as outras categorias voltam pelo botão */
-    document.documentElement.classList.add('com-categoria'); menuSec.hidden = false; touched = true; stopAuto(); filter = id; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; closeNow(); renderChips(); renderBento(); setIsland(list[0]);
-    try { sessionStorage.setItem('sm_cat', id); } catch (e) { /* sem armazenamento */ }
-    if (scroll) menuSec.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
-    centerIn(chipsEl, $(`.chip[data-id="${filter}"]`, chipsEl));
+  const secoes = TYPES.map((t) => ({ t, itens: DISHES.filter((d) => d.type.id === t.id), sel: 0, pg: 0, n: 5, off: 0 }));
+  /* abas em páginas: as que aparecem ocupam a largura toda, inteiras; as setas passam para o próximo grupo.
+     A última página mostra as últimas opções, sempre cheia, sem buraco no fim */
+  const porPagina = (el) => { const w = $('.mtabs', el).clientWidth || 900; return clamp(Math.floor((w + 10) / 190), 2, 5); };
+  const paginar = (sec, pg) => {
+    const el = $(`#m-${sec.t.id}`), n = Math.min(porPagina(el), sec.itens.length), total = Math.ceil(sec.itens.length / n);
+    sec.n = n; sec.pg = ((pg % total) + total) % total; sec.off = Math.min(sec.pg * n, sec.itens.length - n);
+    el.style.setProperty('--n', n); el.style.setProperty('--off', sec.off);
+    $$('.mtab', el).forEach((b, k) => { const vis = k >= sec.off && k < sec.off + n; b.tabIndex = vis ? 0 : -1; b.setAttribute('aria-hidden', !vis); });
+    $$('.mt-nav', el).forEach((b) => { b.disabled = total < 2; });
   };
-  /* fora de uma categoria, a busca procura em todo o cardápio: a lista de resultados abre e o cursor continua na caixa de busca */
-  $('#qGeral').addEventListener('input', (e) => { const v = e.target.value; if (!v.trim()) return; e.target.value = ''; document.documentElement.classList.add('com-categoria'); menuSec.hidden = false; touched = true; stopAuto(); buscaGeral = true; tagAtiva = ''; query = v; const qi = $('#q'); qi.value = v; closeNow(); renderChips(); renderBento(); rolarPara({ top: ret(menuSec).top + SY() - 40, behavior: 'instant' }); qi.focus({ preventScroll: true }); qi.setSelectionRange(v.length, v.length); });
-  /* transição: o card cresce até ocupar a tela, sobe e revela os produtos */
-  let catBusy = false;
-  catsEl.addEventListener('click', (e) => {
-    const c = e.target.closest('.cat'); if (!c || catBusy) return;
-    if (reduce) { openCat(c.dataset.id, true); return; }
-    catBusy = true; const r = ret(c), fly = c.cloneNode(true); fly.classList.add('cat-fly'); fly.setAttribute('aria-hidden', 'true'); fly.tabIndex = -1;
-    gsap.set(fly, { left: r.left, top: r.top, width: r.width, height: r.height, opacity: 1, scale: 1, y: 0 }); document.body.appendChild(fly); c.style.visibility = 'hidden';
-    const titulo = $('.cat-lab b', fly), rotulo = $('.cat-lab', fly), seta = $('.cat-go', fly), grande = Math.min(IW() * 0.11, 128);
-    gsap.timeline({ onComplete() { fly.remove(); c.style.visibility = ''; catBusy = false; } })
-      .to(seta, { opacity: 0, scale: 0.6, duration: 0.2 }, 0)
-      .to(fly, { left: 0, top: 0, width: IW(), height: IH(), borderRadius: 0, duration: 0.72, ease: 'power3.inOut', onUpdate() { enquadrarEm(fly); } /* a foto acompanha o card crescendo, até a tela cheia */ }, 0)
-      .to(titulo, { fontSize: grande, duration: 0.72, ease: 'power3.inOut' }, 0)
-      .to(rotulo, { left: 'var(--gut)', bottom: 40, duration: 0.72, ease: 'power3.inOut' }, 0)
-      .call(() => { openCat(c.dataset.id, false); rolarPara({ top: ret(menuSec).top + SY() - 40, behavior: 'instant' }); }, null, 0.86)
-      .to(fly, { yPercent: -100, duration: 0.7, ease: 'power3.inOut' }, 0.9);
+  menuEl.innerHTML = secoes.map(({ t, itens }, k) => `
+    <section class="msec" id="m-${t.id}" data-k="${k}" aria-labelledby="mt-${t.id}" style="--bg:${t.c[0]};--deep:${t.c[1]};--ink:${t.ink};--acc:${t.acc}">
+      <p class="msec-word" aria-hidden="true">${esc(t.word)}</p>
+      <div class="msec-in">
+        <h2 class="msec-t" id="mt-${t.id}">${esc(t.name)}</h2>
+        <div class="mtabs-wrap">
+          <button class="mt-nav prev" type="button" aria-label="Opções anteriores">‹</button>
+          <div class="mtabs"><div class="mtrack" role="tablist" aria-label="${esc(t.name)}">${itens.map((d, i) => { const s = d.show && showById(d.show); return `<button class="mtab" type="button" role="tab" data-i="${i}" aria-selected="${i === 0}"><span class="mt-th">${s ? `<img src="${showThumb(s)}" alt="" loading="lazy">` : ''}</span><span class="mt-tx"><b>${esc(d.name)}</b><small>R$ ${brl(d.price)}</small></span></button>`; }).join('')}</div></div>
+          <button class="mt-nav next" type="button" aria-label="Mais opções">›</button>
+        </div>
+        <div class="mstage" role="tabpanel">
+          <div class="mphoto"></div>
+          <span class="mbadge"></span>
+          <span class="mprice"></span>
+        </div>
+        <p class="mdesc"></p>
+        <div class="mact"><button class="btn mbtn-see" type="button"><i aria-hidden="true">▶</i> Ver montando</button><button class="btn mbtn-add" type="button">Adicionar <i aria-hidden="true">+</i></button></div>
+      </div>
+    </section>`).join('');
+  dotsEl.innerHTML = secoes.map(({ t }, k) => `<a href="#m-${t.id}" data-k="${k}" aria-label="${esc(t.name)}"><span>${esc(t.name)}</span></a>`).join('');
+
+  /* troca o item da seção: a foto nova abre em círculo por cima da antiga e a etiqueta pula */
+  const mostrar = (sec, i, anima) => {
+    const el = $(`#m-${sec.t.id}`), d = sec.itens[i]; if (!d) return; sec.sel = i;
+    $$('.mtab', el).forEach((b, k) => b.setAttribute('aria-selected', k === i));
+    const ph = $('.mphoto', el), velha = ph.firstElementChild, nova = document.createElement('div'); nova.className = 'mp-in'; nova.innerHTML = fotoHtml(d); ph.appendChild(nova); enquadrarEm(nova);
+    $('.mbadge', el).textContent = d.badge || d.type.name; $('.mprice', el).textContent = 'R$ ' + brl(d.price);
+    $('.mdesc', el).textContent = ingredientesDe(d); $('.mbtn-see', el).hidden = !d.show;
+    if (i < sec.off || i >= sec.off + sec.n) paginar(sec, Math.floor(i / sec.n));
+    if (!anima || reduce) { if (velha) velha.remove(); return; }
+    gsap.fromTo(nova, { clipPath: 'circle(0% at 50% 55%)' }, { clipPath: 'circle(75% at 50% 55%)', duration: 0.75, ease: 'power3.inOut', onComplete() { if (velha) velha.remove(); nova.style.clipPath = ''; } });
+    gsap.fromTo($('img', nova), { scale: 1.15, rotation: -4 }, { scale: 1, rotation: 0, duration: 0.9, ease: 'power3.out' });
+    gsap.fromTo($('.mbadge', el), { scale: 0.4, rotation: -20 }, { scale: 1, rotation: -8, duration: 0.6, ease: 'back.out(2.2)' });
+    gsap.fromTo($('.mprice', el), { scale: 0.6 }, { scale: 1, duration: 0.5, ease: 'back.out(2)', delay: 0.08 });
+    gsap.fromTo([$('.mdesc', el), $('.mact', el)], { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.06, ease: 'power2.out' });
+  };
+  secoes.forEach((sec) => {
+    const el = $(`#m-${sec.t.id}`), tabs = $('.mtabs', el);
+    tabs.addEventListener('click', (e) => { const b = e.target.closest('.mtab'); if (b && +b.dataset.i !== sec.sel) mostrar(sec, +b.dataset.i, true); });
+    tabs.addEventListener('keydown', (e) => { const n = sec.itens.length; let to = null; if (e.key === 'ArrowRight') to = (sec.sel + 1) % n; if (e.key === 'ArrowLeft') to = (sec.sel - 1 + n) % n; if (to !== null) { e.preventDefault(); mostrar(sec, to, true); $(`.mtab[data-i="${to}"]`, el).focus(); } });
+    $('.mt-nav.prev', el).addEventListener('click', () => paginar(sec, sec.pg - 1));
+    $('.mt-nav.next', el).addEventListener('click', () => paginar(sec, sec.pg + 1));
+    paginar(sec, 0);
+    $('.mphoto', el).addEventListener('click', () => { const d = sec.itens[sec.sel]; if (d.show) window.SM.abrirCozinha(d.show); });
+    $('.mbtn-see', el).addEventListener('click', () => { const d = sec.itens[sec.sel]; if (d.show) window.SM.abrirCozinha(d.show); });
+    $('.mbtn-add', el).addEventListener('click', () => { const d = sec.itens[sec.sel], p = precoPadrao(d); addToOrder(d, p.size, p.price); });
+    mostrar(sec, 0, false);
   });
-  /* "Cardápio" no topo fecha os produtos e volta para os cards */
-  $$('a[href="#categorias"]').forEach((a) => a.addEventListener('click', () => { closeNow(); menuSec.hidden = true; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; document.documentElement.classList.remove('com-categoria'); try { sessionStorage.removeItem('sm_cat'); } catch (e) { /* sem armazenamento */ } }));
-  /* botão que acompanha a lista: a lista some e os cards de categoria voltam */
-  $('#catBack').addEventListener('click', () => {
-    if (catBusy) return; catBusy = true; closeNow(); try { sessionStorage.removeItem('sm_cat'); } catch (e) { /* sem armazenamento */ }
-    const fim = () => { menuSec.hidden = true; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; document.documentElement.classList.remove('com-categoria'); gsap.set(menuSec, { clearProps: 'opacity,transform' }); rolarPara({ top: ret($('#categorias')).top + SY() - 40, behavior: 'instant' }); catBusy = false; if (!reduce) gsap.from($$('.cat', catsEl), { y: 26, opacity: 0, scale: 0.97, duration: 0.5, stagger: 0.015, ease: 'power3.out', clearProps: 'transform,opacity' }); $('.cat', catsEl).focus({ preventScroll: true }); };
-    if (reduce) { fim(); return; }
-    /* transição: uma cortina sobe, cobre a tela, e ao sair revela o menu */
-    const cortina = document.createElement('div'); cortina.className = 'menu-cortina'; cortina.setAttribute('aria-hidden', 'true'); cortina.innerHTML = '<b>Menu</b>'; document.body.appendChild(cortina);
-    gsap.timeline({ onComplete() { cortina.remove(); } })
-      .fromTo(cortina, { yPercent: 100 }, { yPercent: 0, duration: 0.6, ease: 'power3.inOut' })
-      .fromTo($('b', cortina), { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }, 0.25)
-      .call(fim, null, 0.7)
-      .to(cortina, { yPercent: -100, duration: 0.65, ease: 'power3.inOut' }, 0.78);
-  });
+  addEventListener('resize', () => { enquadrarEm(menuEl); secoes.forEach((sec) => paginar(sec, Math.floor(sec.sel / porPagina($(`#m-${sec.t.id}`))))); });
+  /* a seção que está na tela acende o ponto ao lado e entra com o título subindo */
+  const vistas = new Set();
+  const ioSec = new IntersectionObserver((es) => es.forEach((e) => {
+    const k = +e.target.dataset.k; if (!e.isIntersecting) return;
+    $$('a', dotsEl).forEach((a) => a.classList.toggle('on', +a.dataset.k === k));
+    if (!vistas.has(k) && !reduce) { vistas.add(k); gsap.from($$('.msec-t, .mtabs-wrap, .mstage, .mdesc, .mact', e.target), { y: 40, opacity: 0, stagger: 0.08, duration: 0.7, ease: 'power3.out' }); }
+  }), { threshold: 0.45 });
+  $$('.msec', menuEl).forEach((s) => ioSec.observe(s));
+  new IntersectionObserver((es) => dotsEl.classList.toggle('on', es[0].isIntersecting), { threshold: 0.12 }).observe(menuEl);
+  /* grade de ingredientes: cada recorte com o nome embaixo; no mouse, ele pula e gira */
+  const NOMES_ING = [['bun-top', 'Pão brioche'], ['patty', 'Blend da casa'], ['cheddar', 'Cheddar'], ['bacon', 'Bacon'], ['egg', 'Ovo'], ['lettuce', 'Alface'], ['tomato', 'Tomate'], ['onion', 'Cebola roxa'], ['pickles', 'Picles'], ['bun-bottom', 'Pão tostado']];
+  $('#ingsGrid').innerHTML = NOMES_ING.map(([k, nome], i) => `<figure class="ing" style="--r:${((i * 37) % 13) - 6}deg"><img src="${ingUrl(k)}" alt="" loading="lazy" draggable="false"><figcaption>${esc(nome)}</figcaption></figure>`).join('');
+  if (!reduce) $$('.ing').forEach((f) => f.addEventListener('pointerenter', () => gsap.fromTo($('img', f), { y: 0, rotation: 0 }, { keyframes: [{ y: -22, rotation: -10, duration: 0.18, ease: 'power2.out' }, { y: 0, rotation: 4, duration: 0.3, ease: 'bounce.out' }, { rotation: 0, duration: 0.2 }] })));
+  /* faixa de fotos, como um filme: os pratos passam inclinados, com a legenda do pedido em cima e embaixo */
+  const comFoto = DISHES.filter((d) => d.show && showById(d.show));
+  const fotos = [0, 1, 2, 3, 4].flatMap((k) => comFoto.filter((d, i) => i % 5 === k)).slice(0, 14);
+  $('#filmRow').innerHTML = [...fotos, ...fotos].map((d) => `<span class="film-ph"><img src="${showThumb(showById(d.show))}" alt="" loading="lazy"><b>${esc(d.name)}</b></span>`).join('');
+  const legenda = fotos.map((d, i) => `PEDIDO ${pad(410 + i * 7, 4)} · ${d.name.toUpperCase()} · R$ ${brl(d.price)}`).join(' — ');
+  $('#filmCap1').textContent = $('#filmCap2').textContent = `${legenda} — ${legenda}`;
+  /* a seção de um prato, para voltar a ela depois de ver a montagem */
+  const secaoDoShow = (id) => secoes.find((s) => s.itens.some((d) => d.show === id));
+
   /* recarregar a página sempre volta ao início; só a atualização automática do localhost (sm_auto) reabre onde estava */
-  let voltaAuto = false; try { voltaAuto = sessionStorage.getItem('sm_auto') === '1'; sessionStorage.removeItem('sm_auto'); if (!voltaAuto) { sessionStorage.removeItem('sm_cat'); sessionStorage.removeItem('sm_show'); } } catch (e) { /* sem armazenamento */ }
+  let voltaAuto = false; try { voltaAuto = sessionStorage.getItem('sm_auto') === '1'; sessionStorage.removeItem('sm_auto'); if (!voltaAuto) sessionStorage.removeItem('sm_show'); } catch (e) { /* sem armazenamento */ }
   if ('scrollRestoration' in history) history.scrollRestoration = voltaAuto ? 'auto' : 'manual';
   if (!voltaAuto) { if (location.hash) history.replaceState(null, '', location.pathname + location.search); rolarPara(0, 0); }
-  /* logo: fecha o que estiver aberto e volta ao topo da página principal */
-  $('.logo').addEventListener('click', (e) => { e.preventDefault(); closeNow(); menuSec.hidden = true; buscaGeral = false; tagAtiva = ''; query = ''; $('#q').value = ''; document.documentElement.classList.remove('com-categoria', 'montando'); try { sessionStorage.removeItem('sm_cat'); } catch (er) { /* sem armazenamento */ } if (cur !== 0) switchShow(0); /* página principal: o hambúrguer montando desde o começo */ else { p = 0; rolarPara({ top: 0, behavior: 'instant' }); } });
-  try { const salva = sessionStorage.getItem('sm_cat'); if (salva && TYPES.some((t) => t.id === salva)) setTimeout(() => openCat(salva, false), 0); } catch (e) { /* sem armazenamento */ }
-  if (!reduce) { const io = new IntersectionObserver((es) => { if (!es[0].isIntersecting) return; io.disconnect(); gsap.from($$('.cat', catsEl), { y: 30, opacity: 0, scale: 0.97, duration: 0.65, stagger: 0.025, ease: 'power3.out', clearProps: 'transform,opacity' }); }, { threshold: 0.08 }); io.observe(catsEl); }
+  /* vai para outro ponto da página com a onda: a cozinha fecha e a posição muda por baixo dela */
+  const irPara = (rotulo, titulo, alvoFn, depois) => ondaPara(rotulo, titulo, '#FFC93C', () => { raiz0.classList.remove('montando', 'cozinha'); p = 0; rolarPara({ top: alvoFn(), behavior: 'instant' }); if (depois) depois(); });
+  const NOME_ALVO = { abertura: ['Início', 'Saborama'], menu: ['Cardápio', 'Escolha seu prato'], ingredientes: ['Ingredientes', 'Camada por camada'] };
+  /* logo: fecha a cozinha e volta ao topo */
+  $('.logo').addEventListener('click', (e) => { e.preventDefault(); irPara('Início', 'Saborama', () => 0); });
+  /* todo link que leva a outro lugar da página (menu, botões, pontos laterais, rodapé) usa a mesma onda */
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href^="#"]'); if (!a || a.classList.contains('skip') || e.defaultPrevented) return;
+    const id = a.getAttribute('href').slice(1), el = id && document.getElementById(id); if (!el || id === 'cena') return;
+    e.preventDefault();
+    const sec = id.startsWith('m-') ? secoes.find((x) => 'm-' + x.t.id === id) : null, [r, t] = sec ? ['Cardápio', sec.t.name] : NOME_ALVO[id] || ['Indo para', id];
+    irPara(r, t, () => ret(el).top + SY());
+  });
+  /* abre a cozinha com um prato: usado pela abertura, pelo rodapé e pelo cardápio */
+  window.SM.abrirCozinha = (id) => { const i = SHOWS.findIndex((s) => s.id === id); if (i >= 0) switchShow(i); };
+  /* "Voltar ao cardápio": fecha a cozinha e volta para a seção do prato que estava montando */
+  $('#catBack').addEventListener('click', () => {
+    const sec = secaoDoShow(SHOWS[cur].id), alvo = sec ? $(`#m-${sec.t.id}`) : menuEl;
+    irPara('Voltando ao', sec ? sec.t.name : 'Cardápio', () => { document.documentElement.classList.remove('cozinha'); return ret(alvo).top + SY(); }, () => { if (sec) { const i = sec.itens.findIndex((d) => d.show === SHOWS[cur].id); if (i >= 0 && i !== sec.sel) mostrar(sec, i, false); } });
+  });
+  const paintRes = () => {};
 
   /* ---------- ilha de compra ---------- */
   /* tamanho só onde faz sentido: hambúrguer e prato feito têm tamanho único */
   const SIZE_SETS = { pmg: { list: [['P', 'Pequena', 0.82], ['M', 'Média', 1], ['G', 'Grande', 1.28]], def: 1 }, pizza: { list: [['Broto', 'Broto', 0.62], ['Média', 'Média', 0.82], ['Grande', 'Grande', 1]], def: 2 }, unico: { list: [['', 'Tamanho único', 1]], def: 0 } };
-  const SIZE_BY_TYPE = { fritas: 'pmg', bebidas: 'pmg', sucos: 'pmg', shakes: 'pmg', sopas: 'pmg', marmitas: 'pmg', pizza: 'pizza' };
+  const SIZE_BY_TYPE = { bebidas: 'pmg', pizzas: 'pizza' };
   let SIZES = SIZE_SETS.unico.list, sizeKey = 'unico';
   let isDish = null, isSize = 0;
   const paintSizes = () => {
@@ -663,7 +637,7 @@
   const fakeQr = () => { const r = (x, y) => ((x * 7 + y * 13 + x * y * 3) % 5) < 2, fin = (x, y) => (x < 7 && y < 7) || (x > 21 && y < 7) || (x < 7 && y > 21); let s = ''; for (let y = 0; y < 29; y++) for (let x = 0; x < 29; x++) if (!fin(x, y) && r(x, y)) s += `<rect x="${x}" y="${y}" width="1" height="1"/>`; [[0, 0], [22, 0], [0, 22]].forEach(([a, b]) => { s += `<path fill-rule="evenodd" d="M${a} ${b}h7v7h-7zM${a + 1} ${b + 1}v5h5v-5z"/><rect x="${a + 2}" y="${b + 2}" width="3" height="3"/>`; }); return s; };
   function addToOrder(d, size, price, semOferta) { const e = order.find((o) => o.id === d.id && o.size === size); if (e) e.qty++; else order.push({ id: d.id, name: d.name, size, price, qty: 1 }); if (co.step === 3) { co.step = 0; ofertaRecusada = false; } paintOrder(); $('#live').textContent = d.name + ' adicionado ao pedido.'; if (!reduce) embalar(d); if (!semOferta) { clearTimeout(ofertaT); ofertaT = setTimeout(() => oferecer(d), reduce ? 200 : 1500); } }
   /* comprou comida: oferece bebida e sobremesa. Só o que ainda falta no pedido, e quem recusa não vê de novo neste pedido */
-  const TIPOS_BEBIDA = ['bebidas', 'sucos', 'cafes', 'drinks'], TIPOS_DOCE = ['doces', 'acai', 'shakes'], SUGESTOES = { bebida: ['bebidas-Coca-Cola', 'bebidas-Guaraná Antarctica', 'sucos-Laranja Espremida', 'bebidas-Água sem Gás'], doce: ['doces-Petit Gâteau', 'doces-Brownie com Sorvete', 'doces-Pudim de Leite', 'doces-Churros'] };
+  const TIPOS_BEBIDA = ['bebidas'], TIPOS_DOCE = ['sobremesas'], SUGESTOES = { bebida: ['bebidas-Coca-Cola', 'bebidas-Guaraná Antarctica', 'bebidas-Limonada Suíça', 'bebidas-Água sem Gás'], doce: ['sobremesas-Petit Gâteau', 'sobremesas-Brownie com Sorvete', 'sobremesas-Casquinha Dupla', 'sobremesas-Churros'] };
   let ofertaT = 0, ofertaRecusada = false, ofertaEl = null;
   const temNoPedido = (tipos) => order.some((o) => tipos.some((t) => o.id.startsWith(t + '-')));
   const precoPadrao = (d) => { const set = SIZE_SETS[SIZE_BY_TYPE[d.type.id] || 'unico'], t = set.list[set.def]; return { size: t[0], price: Math.round(d.price * t[2] * 100) / 100 }; };
@@ -749,12 +723,12 @@
 
   /* ---------- laço ---------- */
   let stageVisible = true; new IntersectionObserver((e) => { stageVisible = e[0].isIntersecting; }).observe(stage);
-  const topEl = $('#top'), island = $('#island');
+  const topEl = $('#top'), island = $('#island'), heroEl = $('#abertura');
   /* clique em link ou botão pode pular para outra parte da página: esse pulo nunca é segurado */
   let holdDesde = 0, holdFree = 0, naMontagem = false; const raizEl = document.documentElement;
   document.addEventListener('click', (e) => { const alvo = e.target.closest && e.target.closest('a,button'); if (alvo && !alvo.matches('#pSee') && !(alvo.tagName === 'BUTTON' && alvo.closest('#stage'))) { holdFree = performance.now() + 1800; raizEl.classList.remove('montando'); } }, true);
   gsap.ticker.add((t) => {
-    const { top, h } = sectionRange(); target = clamp((SY() - top) / h);
+    const coz = cozOn(), { top, h } = sectionRange(); target = coz ? clamp((SY() - top) / h) : 0;
     const show = SHOWS[cur]; let alvo = target;
     /* a montagem espera a peça carregar: nenhum ingrediente aparece sem cair */
     if (show.recipe) { const pronta = stepsReady(); if (pronta < layers.length) alvo = Math.min(target, pronta / (show.steps.length + 0.5)); }
@@ -767,34 +741,40 @@
     /* a página segue assim que a última peça pousa. Só uma imagem que não carrega por 15 segundos solta antes, para não prender o cliente */
     /* enquanto monta, o que vem depois da cena sai do layout: a página termina no fim da montagem e nenhuma rolagem passa dali */
     let segurar = false;
-    if (!reduce && show.recipe && open < 0 && !drawer.classList.contains('on')) {
+    if (!reduce && coz && show.recipe && open < 0 && !drawer.classList.contains('on')) {
       const fim = top + h, n0 = show.steps.length, pronto = (n0 - 0.18) / (n0 + 0.5), agora = performance.now(), liberada = p >= pronto, parada = stepsReady() < layers.length;
       if (parada && SY() >= fim - 1) { if (!holdDesde) holdDesde = agora; if (agora - holdDesde > 15000) { holdFree = agora + 8000; holdDesde = 0; } } else holdDesde = 0;
       segurar = !liberada && agora >= holdFree && naMontagem;
       naMontagem = SY() >= top - 1 && SY() <= fim + 1;
     } else naMontagem = false;
     raizEl.classList.toggle('montando', segurar);
-    if (stageVisible) { renderScene(); drawFx(); drawFizz(); }
+    if (coz && stageVisible) { renderScene(); drawFx(); drawFizz(); }
     updateWave(t);
-    const past = SY() > top + h + IH() * 0.2, end = IH() + SY() > document.documentElement.scrollHeight - 90;
-    island.classList.toggle('on', past && !end && open < 0 && !drawer.classList.contains('on')); topEl.classList.toggle('on-cream', SY() > top + h + IH() * 0.92); topEl.classList.toggle('in-list', !menuSec.hidden);
+    /* a ilha de compra aparece depois da abertura, menos dentro da cozinha (lá o cartão já tem o botão de adicionar) */
+    const heroH = heroEl.offsetHeight, naCozinha = coz && SY() >= top - IH() * 0.6 && SY() <= top + h + IH() * 0.3;
+    const past = SY() > heroH * 0.85, end = IH() + SY() > document.documentElement.scrollHeight - 90;
+    island.classList.toggle('on', false && past && !end && !naCozinha); /* cada seção do cardápio já tem o botão de adicionar */
+    topEl.classList.toggle('on-hero', SY() < heroH - 50); topEl.classList.toggle('in-list', naCozinha);
   });
 
   /* ---------- início ---------- */
   /* ao recarregar sozinho, volta para o prato que estava aberto */
-  try { const salvo = SHOWS.findIndex((s) => s.id === sessionStorage.getItem('sm_show')); if (salvo > 0) cur = salvo; } catch (e) { /* sem armazenamento */ }
+  try { const salvo = SHOWS.findIndex((s) => s.id === sessionStorage.getItem('sm_show')); if (salvo >= 0 && voltaAuto) { cur = salvo; raiz0.classList.add('cozinha'); } } catch (e) { /* sem armazenamento */ }
   setVars(SHOWS[cur].colors); buildShots(SHOWS[cur]); refreshPick(); setIsland(DISHES.find((d) => d.show === SHOWS[cur].id));
   /* em localhost, a página se atualiza sozinha quando chegam fotos ou código novos (menos com pedido em andamento) */
   if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
-    let assinatura = null; const arquivos = ['index.html', 'js/data.js', 'js/pieces.js', 'js/recipes-built.js', 'js/ingredients.js', 'js/dish-boxes.js', 'js/escala.js', 'js/app.js', 'css/style.css'];
+    let assinatura = null; const arquivos = ['index.html', 'js/data.js', 'js/pieces.js', 'js/recipes-built.js', 'js/ingredients.js', 'js/dish-boxes.js', 'js/escala.js', 'js/menu.js', 'js/app.js', 'js/hero.js', 'css/style.css'];
     const conferir = async () => { try { const textos = await Promise.all(arquivos.map((a) => fetch(a, { cache: 'no-store' }).then((r) => r.text()))); const nova = textos.map((t) => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return h; }).join(); if (assinatura && nova !== assinatura) { if (order.length || open >= 0 || busy) return; try { sessionStorage.setItem('sm_show', SHOWS[cur].id); sessionStorage.setItem('sm_auto', '1'); } catch (e) { /* sem armazenamento */ } location.reload(); return; } assinatura = nova; } catch (e) { /* servidor reiniciando */ } };
     conferir(); setInterval(conferir, 20000);
-  } renderChips(); renderBento(); paintOrder();
-  const first = SHOWS[0], urls = [...new Set([...(first.frames || []).flatMap((n) => [`assets/frames/${n}.jpg?v=${VER}`, `assets/frames/${n}-peca.png?v=${VER}`]), ...typeGroups.map((g) => showThumb(SHOWS[g.first])), sceneUrl(window.SM.BOARD.img)])]; /* só o primeiro prato e as bolhas: o resto carrega quando for aberto */ let done = 0; const plate = $('.ld-plate'), ldn = $('#ldn');
+  } paintOrder(); setIsland(DISHES[0]);
+  /* a abertura precisa só dos ingredientes recortados; a cozinha carrega as fotos de cada etapa quando abre */
+  const urls = [...new Set(Object.keys(window.SM.ING).map(ingUrl))]; let done = 0; const plate = $('.ld-plate'), ldn = $('#ldn');
   const finish = () => {
     const tl = gsap.timeline();
     tl.to('#loader', { opacity: 0, duration: reduce ? 0 : 0.5, onComplete() { const el = $('#loader'); if (el) el.remove(); } });
-    if (!reduce) tl.from('.window', { clipPath: 'circle(0% at 60% 52%)', duration: 1.1, ease: 'power3.inOut', clearProps: 'clipPath' }, 0.1).from('.top', { y: -24, opacity: 0, duration: 0.6 }, 0.3).from('.title .ln', { y: 50, opacity: 0, stagger: 0.12, duration: 0.8, ease: 'power3.out' }, 0.45).from('.kick,.text,.soda,.steps', { y: 20, opacity: 0, stagger: 0.07, duration: 0.5 }, 0.65);
+    if (!reduce) tl.from('.top', { y: -24, opacity: 0, duration: 0.6 }, 0.3);
+    /* a abertura (hero.js) começa a montar quando a tela de carregamento sai */
+    window.SM.pronto = true; document.dispatchEvent(new Event('sm:pronto'));
   };
   const tick = () => { done++; const f = Math.round((done / urls.length) * 100); plate.style.setProperty('--f', f); ldn.textContent = f; if (done === urls.length) finish(); };
   urls.forEach((u) => { const i = new Image(); i.onload = i.onerror = tick; i.src = u; });

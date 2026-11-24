@@ -4,7 +4,7 @@
 (function () {
   const S = window.SM;
   /* versão das fotos: muda quando alguma foto é refeita, e o navegador baixa a nova em vez de usar a guardada */
-  const VER = (S.VER = '20261117e');
+  const VER = (S.VER = '20261124a');
   const ING = (S.ING = {
     'bun-bottom': { ar: 1000 / 574, w: 1, t: 0.17, kick: 'A base', t1: 'O pão', t2: 'tostado', text: 'Brioche cortado ao meio e dourado na manteiga, com o lado crocante para cima.', fx: 'steam' },
     lettuce: { ar: 1000 / 543, w: 1.1, t: 0.08, dy: 0.02, kick: 'Alface', t1: 'A alface', t2: 'cai', text: 'Folha fresca e bem crespa, que segura o calor da carne longe do pão.', fx: 'drops' },
@@ -18,7 +18,7 @@
     'bun-top': { ar: 1000 / 719, w: 1.02, t: 0.4, dy: 0.03, kick: 'A tampa', t1: 'Fecha com', t2: 'brioche', text: 'O pão com gergelim desce por último e fecha tudo.', fx: 'steam' },
   });
 
-  /* posição exata de cada peça na foto da etapa (fração da imagem), gerada por extrair-pecas.ps1 */
+  /* posição exata de cada peça na foto da etapa (fração da imagem), vinda de pieces.js */
   S.PIECES = {
     'smash-1': { x: 0.4779, y: 0.5069, w: 0.3439, h: 0.2136 }, 'smash-2': { x: 0.4713, y: 0.4655, w: 0.3487, h: 0.1838 }, 'smash-3': { x: 0.5048, y: 0.4261, w: 0.2787, h: 0.1828 }, 'smash-4': { x: 0.4952, y: 0.3369, w: 0.2925, h: 0.2412 },
     'smash-5': { x: 0.4964, y: 0.3401, w: 0.2883, h: 0.2147 }, 'smash-6': { x: 0.5544, y: 0.3177, w: 0.1794, h: 0.102 }, 'smash-7': { x: 0.57, y: 0.2986, w: 0.1453, h: 0.0988 }, 'smash-8': { x: 0.5084, y: 0.1637, w: 0.2883, h: 0.187 },

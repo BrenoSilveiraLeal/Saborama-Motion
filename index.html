@@ -8,12 +8,12 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,700..900&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="js/escala.js"></script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<a class="skip" href="#categorias">Pular para o cardápio</a>
+<a class="skip" href="#menu">Pular para o cardápio</a>
 
 <div id="loader" aria-hidden="true">
   <div class="ld-plate"><span id="ldn">0</span></div>
@@ -21,16 +21,41 @@
 </div>
 
 <header class="top" id="top">
-  <a class="logo" href="#cena" aria-label="Saborama Motion, início">
+  <a class="logo" href="#abertura" aria-label="Saborama Motion, início">
     <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="currentColor"/><circle cx="16" cy="16" r="8" fill="var(--page)"/></svg>
     <span>Saborama <em>Motion</em></span>
   </a>
-  <nav class="nav" aria-label="Principal"><a href="#cena">Na cozinha</a><a href="#categorias">Cardápio</a></nav>
-  <button class="cat-back" id="catBack" type="button"><i aria-hidden="true">←</i><span>Voltar<span class="cb-x"> ao menu</span></span></button>
+  <nav class="nav" aria-label="Principal"><a href="#abertura">Início</a><a href="#menu">Cardápio</a></nav>
+  <button class="cat-back" id="catBack" type="button"><i aria-hidden="true">←</i><span>Voltar<span class="cb-x"> ao cardápio</span></span></button>
   <button class="order-btn" id="orderBtn" type="button">Pedido <i id="orderCount">0</i></button>
 </header>
 
 <main>
+<section id="abertura" class="hero" aria-label="Saborama Motion">
+  <div class="tape" aria-hidden="true"><div class="tape-in" id="tape"></div></div>
+  <p class="hero-word" aria-hidden="true">SABORAMA</p>
+  <div class="hero-deco" id="hdeco" aria-hidden="true"></div>
+  <button class="hero-burger" id="hb" type="button" aria-label="Ver este hambúrguer sendo montado"><span class="hb-shadow"></span><span class="hb-stack"></span></button>
+  <span class="stk stk-a" aria-hidden="true">Montado na hora</span>
+  <span class="stk stk-b" aria-hidden="true">Camada por camada</span>
+  <div class="hero-copy">
+    <h1>Cada prato, <em>montado na sua frente.</em></h1>
+    <p>Escolha qualquer prato do cardápio e veja ele ser feito, ingrediente por ingrediente.</p>
+    <div class="cta-row"><a class="btn btn-ink" href="#menu">Ver cardápio <i aria-hidden="true">→</i></a><button class="btn btn-line" id="heroSee" type="button">Ver montando</button></div>
+  </div>
+  <div class="hero-tag" id="hbTag" aria-live="off"><b id="hbName"></b><span id="hbPrice"></span></div>
+</section>
+
+<div class="band" aria-hidden="true"><div class="band-in" id="band"></div><div class="band-in band-2" id="band2"></div></div>
+
+<section class="ings" id="ingredientes" aria-labelledby="ings-t">
+  <h2 class="ings-t" id="ings-t">Sempre cabe mais uma <s>fatia</s> <em>camada</em></h2>
+  <p class="ings-sub">Tudo chega fresco e é montado na hora, na sua frente. Passe o mouse e brinque com os ingredientes.</p>
+  <div class="ings-grid" id="ingsGrid"></div>
+</section>
+<div id="menu" aria-label="Cardápio"></div>
+<nav class="mdots" id="mdots" aria-label="Seções do cardápio"></nav>
+
 <section id="cena" aria-label="Pratos sendo feitos, passo a passo">
   <div class="stage" id="stage">
     <div class="copy">
@@ -60,45 +85,23 @@
     </div>
   </div>
 </section>
-
-<div class="band" aria-hidden="true"><div class="band-in" id="band"></div></div>
-
-<section id="categorias" class="sec sec-cats" aria-label="Categorias de comida">
-  <div class="wrap">
-    <div class="menu-head">
-      <div>
-        <p class="pill"><i></i><span id="catsLine"></span></p>
-        <h2 class="h2">Do que você tem fome? <em>Escolha uma categoria.</em></h2>
-      </div>
-      <label class="search search-geral"><span class="vh">Buscar em todo o cardápio</span><input id="qGeral" type="search" placeholder="Buscar em todo o cardápio..."></label>
-    </div>
-    <div class="cats" id="cats"></div>
-  </div>
-</section>
-
-<section id="cardapio" class="sec" aria-label="Produtos da categoria" hidden>
-  <div class="wrap">
-    <div class="menu-head">
-      <div>
-        <p class="pill"><i></i><span id="totalLine"></span></p>
-        <h2 class="h2"><span id="menuTitle"></span> <em>Clique e entre no prato.</em></h2>
-      </div>
-      <p class="hint">Clique num bloco · as setas trocam · Esc fecha</p>
-    </div>
-    <div class="tools">
-      <div class="chips" id="chips" role="group" aria-label="Tipo de comida"></div>
-      <div class="filtros" id="filtros" role="group" aria-label="Filtrar pratos"></div>
-      <label class="search"><span class="vh">Buscar prato</span><input id="q" type="search" placeholder="Buscar sabor..."></label>
-    </div>
-    <div class="bento" id="bento"></div>
-    <p class="empty" id="empty" hidden>Nenhum prato com esse nome.</p>
-  </div>
-</section>
 </main>
 
-<footer class="foot">© 2026 Saborama Motion · Preços, tempos, contato e fotos geradas por IA são de demonstração.</footer>
+<section class="film" aria-labelledby="film-t">
+  <h2 class="film-t" id="film-t">Sai da chapa <em>direto pra você.</em></h2>
+  <div class="film-strip" aria-hidden="true"><p class="film-cap" id="filmCap1"></p><div class="film-row" id="filmRow"></div><p class="film-cap" id="filmCap2"></p></div>
+</section>
 
-<div class="wave" id="wave" aria-hidden="true"><svg preserveAspectRatio="none" viewBox="0 0 100 100"><path id="waveLine" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg></div>
+<footer class="foot">
+  <div class="foot-cta">
+    <h2>Bateu fome? <em>A gente monta na hora.</em></h2>
+    <div class="cta-row"><a class="btn btn-acc" href="#menu">Ver cardápio <i aria-hidden="true">→</i></a><button class="btn btn-line" id="footSee" type="button">Ver um prato montando</button></div>
+  </div>
+  <p class="foot-word" aria-hidden="true">SABORAMA</p>
+  <p class="foot-note">© 2026 Saborama Motion · Preços, tempos, contato e fotos geradas por IA são de demonstração.</p>
+</footer>
+
+<div class="wave" id="wave" aria-hidden="true"><b class="wave-t"></b><svg preserveAspectRatio="none" viewBox="0 0 100 100"><path id="waveLine" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg></div>
 
 <div class="island" id="island" role="region" aria-label="Comprar">
   <div class="is-in">
@@ -122,7 +125,8 @@
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script src="js/data.js"></script>
 <script src="js/tags.js"></script>
-<script src="js/pieces.js"></script><script src="js/recipes-built.js"></script><script src="js/ingredients.js"></script><script src="js/dish-boxes.js"></script>
+<script src="js/pieces.js"></script><script src="js/recipes-built.js"></script><script src="js/ingredients.js"></script><script src="js/menu.js"></script><script src="js/dish-boxes.js"></script>
 <script src="js/app.js"></script>
+<script src="js/hero.js"></script>
 </body>
 </html>

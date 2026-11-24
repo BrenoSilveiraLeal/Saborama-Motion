@@ -3,6 +3,8 @@
    ampliada ou reduzida na mesma proporção, então fica igual em todas as telas. Celular e tablet usam o layout próprio.
    --vw e --vh substituem vw e vh no CSS: com zoom, 1vw passaria a valer mais que 1% da tela. */
 (function () {
+  /* recarregar sempre começa no topo, sem o navegador devolver a posição antiga */
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   const BASE = 1366, MINIMO = 1000, raiz = document.documentElement;
   const aplicar = () => {
     const z = innerWidth >= MINIMO ? innerWidth / BASE : 1;
