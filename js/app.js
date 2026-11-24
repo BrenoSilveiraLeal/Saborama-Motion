@@ -479,7 +479,7 @@
         <h2 class="msec-t" id="mt-${t.id}">${esc(t.name)}</h2>
         <div class="mtabs-wrap">
           <button class="mt-nav prev" type="button" aria-label="Opções anteriores">‹</button>
-          <div class="mtabs"><div class="mtrack" role="tablist" aria-label="${esc(t.name)}">${itens.map((d, i) => { const s = d.show && showById(d.show); return `<button class="mtab" type="button" role="tab" data-i="${i}" aria-selected="${i === 0}"><span class="mt-th">${s ? `<img src="${showThumb(s)}" alt="" loading="lazy">` : ''}</span><span class="mt-tx"><b>${esc(d.name)}</b><small>R$ ${brl(d.price)}</small></span></button>`; }).join('')}</div></div>
+          <div class="mtabs"><div class="mtrack" role="tablist" aria-label="${esc(t.name)}">${itens.map((d, i) => { const s = d.show && showById(d.show); return `<button class="mtab" type="button" role="tab" data-i="${i}" aria-selected="${i === 0}"><span class="mt-th">${s ? `<img src="${showThumb(s)}" alt="" decoding="async">` : ''}</span><span class="mt-tx"><b>${esc(d.name)}</b><small>R$ ${brl(d.price)}</small></span></button>`; }).join('')}</div></div>
           <button class="mt-nav next" type="button" aria-label="Mais opções">›</button>
         </div>
         <div class="mstage" role="tabpanel">
@@ -521,17 +521,15 @@
     mostrar(sec, 0, false);
   });
   addEventListener('resize', () => { enquadrarEm(menuEl); secoes.forEach((sec) => paginar(sec, Math.floor(sec.sel / porPagina($(`#m-${sec.t.id}`))))); });
-  /* a seção que está na tela acende o ponto ao lado e entra com o título subindo */
-  const vistas = new Set();
+  /* a seção que está na tela acende o ponto ao lado. Não refaz a animação de entrada: o conteúdo já está visível quando a seção chega, e zerar tudo parecia recarregar */
   const ioSec = new IntersectionObserver((es) => es.forEach((e) => {
     const k = +e.target.dataset.k; if (!e.isIntersecting) return;
     $$('a', dotsEl).forEach((a) => a.classList.toggle('on', +a.dataset.k === k));
-    if (!vistas.has(k) && !reduce) { vistas.add(k); gsap.from($$('.msec-t, .mtabs-wrap, .mstage, .mdesc, .mact', e.target), { y: 40, opacity: 0, stagger: 0.08, duration: 0.7, ease: 'power3.out' }); }
   }), { threshold: 0.45 });
   $$('.msec', menuEl).forEach((s) => ioSec.observe(s));
   new IntersectionObserver((es) => dotsEl.classList.toggle('on', es[0].isIntersecting), { threshold: 0.12 }).observe(menuEl);
   /* grade de ingredientes: cada recorte com o nome embaixo; no mouse, ele pula e gira */
-  const NOMES_ING = [['bun-top', 'Pão brioche'], ['patty', 'Blend da casa'], ['cheddar', 'Cheddar'], ['bacon', 'Bacon'], ['egg', 'Ovo'], ['lettuce', 'Alface'], ['tomato', 'Tomate'], ['onion', 'Cebola roxa'], ['pickles', 'Picles'], ['bun-bottom', 'Pão tostado']];
+  const NOMES_ING = [['bun-top', 'Pão brioche'], ['patty', 'Blend da casa'], ['cheddar', 'Cheddar'], ['bacon', 'Bacon'], ['egg', 'Ovo'], ['lettuce', 'Alface'], ['tomato', 'Tomate'], ['onion', 'Cebola roxa'], ['pickles', 'Picles']];
   $('#ingsGrid').innerHTML = NOMES_ING.map(([k, nome], i) => `<figure class="ing" style="--r:${((i * 37) % 13) - 6}deg"><img src="${ingUrl(k)}" alt="" loading="lazy" draggable="false"><figcaption>${esc(nome)}</figcaption></figure>`).join('');
   if (!reduce) $$('.ing').forEach((f) => f.addEventListener('pointerenter', () => gsap.fromTo($('img', f), { y: 0, rotation: 0 }, { keyframes: [{ y: -22, rotation: -10, duration: 0.18, ease: 'power2.out' }, { y: 0, rotation: 4, duration: 0.3, ease: 'bounce.out' }, { rotation: 0, duration: 0.2 }] })));
   /* faixa de fotos, como um filme: os pratos passam inclinados, com a legenda do pedido em cima e embaixo */

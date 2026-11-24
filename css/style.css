@@ -281,7 +281,7 @@ html:not(.cozinha) #cena{display:none}
 .hero-deco{position:absolute;inset:0;z-index:2;pointer-events:none}
 .hd{position:absolute;width:var(--w)}.hd img{display:block;width:100%;rotate:var(--r);animation:hdFloat 6s ease-in-out infinite;filter:drop-shadow(0 10px 12px rgba(30,12,0,.25))}
 .hd:nth-child(2) img{animation-duration:7s;animation-delay:-2s}.hd:nth-child(3) img{animation-duration:5.5s;animation-delay:-1s}.hd:nth-child(4) img{animation-duration:8s;animation-delay:-3s}.hd:nth-child(5) img{animation-duration:6.5s;animation-delay:-4s}
-.hd-1 img{filter:blur(3px) drop-shadow(0 10px 12px rgba(30,12,0,.2))}.hd-2{z-index:4}.hd-2 img{filter:blur(1.5px)}
+.hd-2{z-index:4}.hd-2 img{filter:blur(1.5px)}
 @keyframes hdFloat{50%{transform:translateY(-14px) rotate(5deg)}}
 .stk{position:absolute;z-index:4;padding:9px 15px;border-radius:99px;font:800 13px/1 var(--disp);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;pointer-events:none;box-shadow:0 8px 18px -8px rgba(0,0,0,.45);transition:background-color .9s,color .9s}
 .stk-a{left:calc(50% - min(330px,calc(var(--vw,1vw)*27)));top:44%;rotate:-9deg;background:var(--h-ink);color:var(--h-page);animation:stk 3.2s ease-in-out infinite}
@@ -464,3 +464,11 @@ html.montando .film{display:none!important}
   .hero-tag{left:16px;right:16px;bottom:240px;justify-items:center;text-align:center}
   .stk-a{top:30%}
 }
+
+/* espaço entre os botões da abertura e a onda de baixo */
+.hero-copy{bottom:calc(var(--gut) + 34px)}
+.hero-tag{bottom:calc(var(--gut) + 34px)}
+@media (max-width:800px){.hero-copy{bottom:40px}.hero-tag{bottom:262px}.hero-burger{bottom:312px}}
+
+/* ingredientes: 9 itens, a última linha de 4 fica centralizada */
+@media (min-width:801px){.ings-grid{grid-template-columns:repeat(10,minmax(0,1fr))}.ing{grid-column:span 2}.ing:nth-child(6){grid-column:2/span 2}}
